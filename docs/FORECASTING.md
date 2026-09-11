@@ -68,8 +68,11 @@ Enforced in code, not left to convention:
 
 1. **Cumulative counters are contaminated.** In historical retrieval, a comment's
    publication time is faithful to the past, but view, comment and like counts are
-   today's cumulative values. Point-in-time state is re-derived only from items with
-   `published_at ≤ t`, or from the observation snapshot table.
+   today's cumulative values. Point-in-time state is re-derived only from the
+   observation snapshot table, or from items retrieved later where the registered
+   collection policy would have retrieved them by *t* — text only if not edited
+   after *t*, video titles never, and every value so derived flagged as
+   reconstructed ([BACKTEST.md](BACKTEST.md)).
 2. **No retrospective changepoint methods** (such as Prophet) as labels or
    features. Online methods, such as Bayesian online changepoint detection, are
    preferred; their calibration on this data is not yet measured.
@@ -77,7 +80,10 @@ Enforced in code, not left to convention:
    hindsight selection in feature space.
 4. **Walk-forward only.** Random k-fold splitting is prohibited; the training window
    always ends before the prediction time, and normalisation statistics come from
-   the training window alone.
+   the training window alone. A training example is admitted only if its full
+   horizon ended before the prediction time — admitting it as soon as its outcome
+   resolved would enrich recent training data in positives, which resolve earlier
+   than negatives by construction.
 5. **Matching rules fixed before evaluation**, following the EMBERS scheme: lead
    time greater than zero; predicted and actual dates within seven days; each
    warning matched to at most one event by maximum-weight bipartite matching.
@@ -100,6 +106,12 @@ percent. What is reported is therefore not balanced accuracy but **precision at 
 alert volume the client actually receives**, together with the cost of alert
 fatigue.
 
+Adapted to topic series, paradigm 1 becomes net excess over a trailing baseline
+frozen at onset ([BACKTEST.md](BACKTEST.md#a3-operational-surge-definition)). There
+the balance of the task is measured rather than assumed, and episodes that have
+already doubled by the time the system could have seen them are excluded from the
+forecasting population and reported as a share.
+
 ---
 
 ## Consequences for the product
@@ -116,9 +128,11 @@ fatigue.
   by topic and period.
 - **Planned events and forecasts are separated.** A calendar of announced events is
   carried as its own stream and is not presented as prediction.
-- **The first quantity to measure** is the half-life of attention in
-  video-platform commentary; it determines whether a multi-day horizon is
-  meaningful at all.
+- **The first quantities to measure** are the number of surges in the available
+  history and the half-life of attention in video-platform commentary. The first
+  determines whether a retrospective evaluation is possible at all; the second
+  fixes the horizon by a pre-registered rule and determines whether a multi-day
+  horizon is meaningful.
 
 ## Open questions
 

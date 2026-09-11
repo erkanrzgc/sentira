@@ -34,7 +34,7 @@ end-to-end vertical slice.
 |---|---|---|
 | 1 | Module layout, point-in-time correctness, survivorship | Approved |
 | 2 | Document model and source fusion | Approved |
-| 3 | Backtest design, phase order, first implementation files | **Pending** |
+| 3 | Backtest protocol, phase order, first implementation files | Approved — [BACKTEST.md](BACKTEST.md) |
 
 ### Section 1 — Module layout and temporal correctness
 
@@ -43,10 +43,16 @@ end-to-end vertical slice.
   [README](../README.md#architecture)).
 - Every document carries `published_at` and `observed_at`. Cumulative counters are
   never stored on the document; they are recorded in
-  `snapshots(doc_id, observed_at, metric, value)`. A feature computed for time *T*
-  reads only rows observed at or before *T*, and a test enforces this.
+  `snapshots(doc_id, observed_at, metric, value)`, and are read only from snapshots
+  observed at or before *T*. An item retrieved after *T* contributes only its
+  immutable fields — identifiers, publication time, hashed author, and text not
+  edited after *T* — and only where the registered collection policy would have
+  retrieved it by *T*; every value so derived is flagged as reconstructed. A single
+  read path enforces this, and an invariance test asserts it
+  ([BACKTEST.md](BACKTEST.md#0-the-point-in-time-rule-reconciled-with-historical-retrieval)).
 - Survivorship: continuous collection runs alongside historical retrieval as a
-  control, and every retrospective result reports its uncorrected survival rate.
+  control, and every retrospective result is reported together with the survival
+  rate at the longest measured lag, which is an upper bound for older material.
 - Tone is decoupled from forecasting. In the published literature, sentiment
   features score at chance for growth prediction; see
   [FORECASTING.md](FORECASTING.md).
@@ -67,11 +73,33 @@ end-to-end vertical slice.
 - Raw and integrity-cleaned series are produced together; the difference between
   them is a finding in its own right.
 
-### Section 3 — Pending
+### Section 3 — Backtest protocol, phase order, first implementation files
 
-Backtest protocol, phase order and the first implementation files are not yet
-fixed. The phase order is deliberately not stated here: it follows from the
-backtest design and would otherwise be committed to prematurely.
+Stated in full in [BACKTEST.md](BACKTEST.md); in summary:
+
+- **Point in time.** Historical retrieval is admitted by a *replay rule*: a
+  retrieved row is visible at *T* only where the registered collection policy would
+  have retrieved it by *T*. Counters are never read from a retrieved row.
+- **Backtestable now.** Only the comment-count component of `public_engagement`,
+  flagged reconstructed and printed with its survival rate. Views, likes,
+  `media_attention` and `divergence` are forward-only from the first day of
+  collection, which is why collection starts before any series is built.
+- **Surge definition.** Net excess over a trailing baseline frozen at onset;
+  conditional doubling within a horizon fixed by the measured half-life. The
+  conditioning instant is the poll at which the system would have *seen* the
+  threshold crossed, not the moment the comment was posted; episodes already
+  doubled when first seen admit no forecast and are excluded and reported.
+- **Registered before counting.** Every definition, threshold and matching rule is
+  locked and hashed before retrieval begins; the evaluation refuses to run against
+  a modified registration.
+- **Phase order.** 1 count the positives · 2 conditional growth against baselines ·
+  3 language-layer accuracy · 4 event log, impact and end-to-end · 5 forward-only
+  components and prospective confirmation. Annotation begins in phase 1.
+- **The first question is whether the evaluation is possible at all.** A polling
+  policy adequate to serve as a control consumes most of the daily quota, so
+  historical depth is expensive. Phase 1 exists to establish, in weeks, whether
+  available history holds enough surges; where it does not, the registered finding
+  is that conditional growth can only be evaluated on data collected forward.
 
 ---
 
@@ -80,7 +108,9 @@ backtest design and would otherwise be committed to prematurely.
 **Quota-aware collection.** Video discovery enumerates the upload playlists of a
 curated channel list (1 unit per call) rather than using search (100 units per
 call). The collector keeps a quota ledger that is debited *before* each call and
-stops before exhaustion. Arithmetic in [FEASIBILITY.md](FEASIBILITY.md#1-collection-volume-and-cost).
+stops before exhaustion. Live collection, historical retrieval and survival checks
+draw on separate reservations, and retrieval cannot spend the live reservation.
+Arithmetic in [FEASIBILITY.md](FEASIBILITY.md#1-collection-volume-and-cost).
 
 **Sentiment and stance are separate layers.** "The economy is a disaster" carries
 negative sentiment, but its stance — toward whom — depends on context. The sentiment
@@ -124,10 +154,15 @@ near-duplicate text, bursts within time windows and repeated-author signals.
   is a finding of the feasibility study and is reported as such.
 - **Annotation consistency.** Intra-annotator agreement on a 100-item subset
   re-labelled blind after at least one week, named as intra-annotator.
-- **End-to-end.** A report generated over a known, dated event: the step in the
-  series must coincide with the event date.
+- **End-to-end.** On at least 20 dated events drawn mechanically from a frozen,
+  independently curated event log, an episode opens within one day of the event
+  date for at least 80%, and the rate at placebo dates is lower at *p* < 0.01.
 - **Forecasting.** Walk-forward evaluation against a baserate model under matching
   rules fixed in advance; see [FORECASTING.md](FORECASTING.md#leakage-controls).
+  Evaluated only once the available history holds at least 100 positive and 100
+  negative episodes across at least 20 distinct test weeks; primary endpoint Brier
+  skill against the baserate, reported against a registered minimum detectable
+  effect.
 - **Engineering.** Tests green; at least 80% coverage on critical paths.
 
 ## Risks

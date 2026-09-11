@@ -19,9 +19,30 @@ Last updated: 2026-09-11
 | Free daily quota | 10,000 | — |
 | Utilisation | **19%** | — |
 
-The margin is wide: channel count or page depth can be raised several-fold within
-the free quota. At expected fill rates this corresponds to roughly 1.5–3 million
-comments per month (*calculated*).
+At expected fill rates this corresponds to roughly 1.5–3 million comments per month
+(*calculated*).
+
+**This profile is superseded for measurement purposes.** It reads each video once,
+which is adequate for volume but not for evaluation: comments arriving after that
+single read are never observed, so the profile cannot serve as the control group for
+historical retrieval, cannot yield a collection-latency figure, and cannot produce a
+prospective test set. The registered policy polls each video at several ages
+([BACKTEST.md](BACKTEST.md#03-the-replay-rule)), which raises the cost and divides
+the quota into enforced reservations:
+
+| Reservation | Units/day | Basis |
+|---|---|---|
+| Live collection under the registered policy | 6,000 | 600 new videos/day × 6 polls, plus discovery, plus paging for new threads |
+| Historical retrieval | 3,000 | The remainder |
+| Survival sampling | 500 | Re-retrieval of complete strata at three lags |
+| Buffer | 500 | Retries and overrun |
+
+Three inputs remain unmeasured — videos per channel-day, threads per video, and the
+realised cost of the policy — so the table is *calculated* and is re-costed against
+the first live run before it is locked. The consequence is stated plainly in the
+backtest design: historical depth is bought out of 3,000 units a day, so a year of
+history would take roughly 220 days of retrieval, and whether a retrospective
+evaluation is possible at all is the first question the work answers.
 
 **Quota arithmetic** — the most consequential engineering detail in collection:
 
@@ -82,6 +103,10 @@ source. That distinction must be written into the methodology note and into
 contracts. The rights position of aggregating title, summary and link is referred to
 counsel.
 
+Because a feed carries only its current window, feed-derived series are
+forward-only from the first day of collection: an unpolled window is lost
+permanently, which is why collection begins before any series is built.
+
 ### Global event database (GDELT DOC 2.0 API) — *measured* 2026-09-11
 
 | Measure | Result |
@@ -92,8 +117,10 @@ counsel.
 
 The corruption is not recoverable where characters were dropped. GDELT is therefore
 usable as a metadata signal but not as a text source for tone analysis. The DOC API
-suits exploration only; production ingestion would require the raw 15-minute file
-archive, which has not been measured. GDELT is not in the first release.
+suits exploration only. The raw export and mentions archive runs to roughly 13 GB
+per year (*calculated*, extrapolated from a single 15-minute slice); it is not a
+series source, and is used offline as a candidate generator for the human-curated
+event log ([BACKTEST.md](BACKTEST.md#a10-ground-truth-event-log)).
 
 ---
 
