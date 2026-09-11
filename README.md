@@ -53,9 +53,11 @@ Two properties receive particular attention because they are ordinarily got wron
 
 **Point-in-time correctness.** Documents carry both a publication time and an
 observation time. Cumulative counters are never stored on the document; they are
-recorded in a snapshot table keyed by observation. A feature computed for time *T*
-may read only rows observed at or before *T*, and this constraint is enforced in
-test rather than assumed.
+recorded in a snapshot table keyed by observation and read only from observations
+made at or before *T*. Material retrieved after *T* contributes only its immutable
+fields, and only where the registered collection policy would have retrieved it by
+*T*; every value so derived is flagged as reconstructed. A single read path
+enforces this, and an invariance test asserts it rather than assuming it.
 
 **Survivorship measurement.** Historical retrieval returns only material that still
 exists; moderation and deletion are not independent of political content. The bias
@@ -153,6 +155,7 @@ material is held separately.
 |---|---|
 | [Concept](docs/CONCEPT.md) | Definition, boundaries, commitments, open items |
 | [Roadmap](docs/ROADMAP.md) | Design status, decisions carried forward, validation criteria |
+| [Backtest](docs/BACKTEST.md) | Evaluation protocol, phase order, first implementation files |
 | [Feasibility](docs/FEASIBILITY.md) | Collection volume and cost, platform access, local throughput |
 | [Forecasting](docs/FORECASTING.md) | Evidence bounding the foresight claims; leakage controls |
 | [Models](docs/MODELS.md) | Licence inheritance through distillation; model selection |
