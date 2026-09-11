@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+
+# Secrets
+.env
+
+# Data: may contain personal data
+data/
+*.db
+*.sqlite3
+*.jsonl
+
+# Models
+models/
+*.safetensors
+
+out/
+
+# Internal research material; not part of this repository
+research/
