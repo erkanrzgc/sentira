@@ -36,6 +36,10 @@ end-to-end vertical slice.
 | 2 | Document model and source fusion | Approved |
 | 3 | Backtest protocol, phase order, first implementation files | Approved — [BACKTEST.md](BACKTEST.md) |
 
+The [implementation amendment](IMPLEMENTATION_START.md) bounds the current code
+to synthetic data and strict observation-time reads. [SOURCE_USE](SOURCE_USE.md)
+records live-data blockers; [CONTINUATION](CONTINUATION.md) records tested coverage.
+
 ### Section 1 — Module layout and temporal correctness
 
 - Modules: `core/ config/ collectors/ storage/ nlp/ series/ forecast/ backtest/
@@ -48,13 +52,14 @@ end-to-end vertical slice.
   immutable fields — identifiers, publication time, hashed author, and text not
   edited after *T* — and only where the registered collection policy would have
   retrieved it by *T*; every value so derived is flagged as reconstructed. A single
-  read path enforces this, and an invariance test asserts it
+  strict read path is implemented for synthetic observations. Historical visibility
+  remains conditional on evidence, as qualified by the implementation amendment
   ([BACKTEST.md](BACKTEST.md#0-the-point-in-time-rule-reconciled-with-historical-retrieval)).
 - Survivorship: continuous collection runs alongside historical retrieval as a
   control, and every retrospective result is reported together with the survival
   rate at the longest measured lag, which is an upper bound for older material.
 - Tone is decoupled from forecasting. In the published literature, sentiment
-  features score at chance for growth prediction; see
+  features scored at chance in the cited cascade study; transfer is unmeasured; see
   [FORECASTING.md](FORECASTING.md).
 
 ### Section 2 — Document model and source fusion
@@ -80,8 +85,9 @@ Stated in full in [BACKTEST.md](BACKTEST.md); in summary:
 - **Point in time.** Historical retrieval is admitted by a *replay rule*: a
   retrieved row is visible at *T* only where the registered collection policy would
   have retrieved it by *T*. Counters are never read from a retrieved row.
-- **Backtestable now.** Only the comment-count component of `public_engagement`,
-  flagged reconstructed and printed with its survival rate. Views, likes,
+- **Candidate retrospective component.** Only the comment-count component of `public_engagement`,
+  flagged reconstructed and printed with its survival rate. Survivor-only history
+  does not establish confirmatory visibility. Views, likes,
   `media_attention` and `divergence` are forward-only from the first day of
   collection, which is why collection starts before any series is built.
 - **Surge definition.** Net excess over a trailing baseline frozen at onset;
@@ -90,7 +96,8 @@ Stated in full in [BACKTEST.md](BACKTEST.md); in summary:
   threshold crossed, not the moment the comment was posted; episodes already
   doubled when first seen admit no forecast and are excluded and reported.
 - **Registered before counting.** Every definition, threshold and matching rule is
-  locked and hashed before retrieval begins; the evaluation refuses to run against
+  locked and hashed before confirmatory retrieval begins, after a separately
+  registered pilot; the evaluation refuses to run against
   a modified registration.
 - **Phase order.** 1 count the positives · 2 conditional growth against baselines ·
   3 language-layer accuracy · 4 event log, impact and end-to-end · 5 forward-only
@@ -106,8 +113,9 @@ Stated in full in [BACKTEST.md](BACKTEST.md); in summary:
 ## Decisions carried forward
 
 **Quota-aware collection.** Video discovery enumerates the upload playlists of a
-curated channel list (1 unit per call) rather than using search (100 units per
-call). The collector keeps a quota ledger that is debited *before* each call and
+curated channel list (1 unit per call) rather than using search, which remains outside the registered endpoint set.
+The current official quota table assigns search a separate daily bucket; see
+[SOURCE_USE](SOURCE_USE.md). The collector keeps a quota ledger that is debited *before* each call and
 stops before exhaustion. Live collection, historical retrieval and survival checks
 draw on separate reservations, and retrieval cannot spend the live reservation.
 Arithmetic in [FEASIBILITY.md](FEASIBILITY.md#1-collection-volume-and-cost).
@@ -131,9 +139,13 @@ cluster. See [MODELS.md](MODELS.md).
 
 **Integrity screening is mandatory.** Coordinated activity is real in political
 discourse and distorts the signal. The integrity layer flags suspect volume through
-near-duplicate text, bursts within time windows and repeated-author signals.
+near-duplicate text and repeated-author/co-commenting patterns in registered
+windows. Topic volume alone must never trigger filtering.
 
-**Behaviour verified in an earlier implementation, to be preserved:**
+**Historical implementation claims, not evidence for this checkout:**
+
+The following behaviours were reported for an earlier implementation. Only the
+offline subset listed in CONTINUATION is tested in this repository:
 
 - The quota ledger is debited before the call, not after; a test asserts that
   ledger units equal the number of API calls actually made.
@@ -169,7 +181,7 @@ near-duplicate text, bursts within time windows and repeated-author signals.
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Quota increase refused | Medium | The design already fits within the free daily quota |
+| Quota increase refused | Medium | Actual polling, refresh and survival cost remains to be measured |
 | Stance accuracy in the target language is low | High | Measured early against the gold standard; scope adjusted, or the work not taken on |
 | Coordinated activity distorts the signal | High | Integrity layer; raw and cleaned series side by side |
 | Client requests person-level output | Medium | Excluded in writing in advance; justified by the aggregate-only design |

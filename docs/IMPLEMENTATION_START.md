@@ -54,7 +54,7 @@ after the revised contracts and implementation plan have been reviewed:
 | Component | Responsibility | Failure behaviour |
 |---|---|---|
 | `core/document.py` | Immutable document envelope and declared field classes; counters excluded | Reject malformed timestamps, undeclared fields and prohibited identifier fields |
-| `core/identity.py` | HMAC-SHA256 boundary with explicit platform and identifier-kind separation | Missing key prevents ingestion; raw identifiers never enter diagnostics |
+| `core/identity.py` | HMAC-SHA256 boundary with explicit platform and entity-kind separation | Missing key prevents construction of the hashing boundary; raw identifiers never enter its diagnostics |
 | `config/schema.py` | Restricted target types and validation of the initial configuration | Reject unsupported types rather than silently coercing them |
 | `storage/schema.py`, `repository.py` | Documents and separate snapshots; storage-owned observation clock | Failed writes roll back; callers cannot back-date observations |
 | `storage/asof.py` | Strict point-in-time reads through one storage boundary | Later observations and later snapshots remain invisible |
@@ -72,7 +72,9 @@ complete Phase 1 or as production-ready privacy enforcement.
 ### Required checks
 
 - Identical raw identifiers differ across platforms and identifier kinds.
-- Missing keys fail before any ingestion or persistence.
+- Missing keys fail when constructing the hashing boundary, before it can prepare
+  input for ingestion. The internal repository accepts already-hashed documents;
+  it does not independently require an environment key.
 - Raw identifiers and cumulative counters cannot enter a document or its table.
 - Disallowed target types fail configuration validation.
 - Observation timestamps come from an injected storage clock.

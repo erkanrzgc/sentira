@@ -8,11 +8,16 @@
 [![Privacy](https://img.shields.io/badge/design-aggregate--only-informational)](#design-principles)
 [![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
 
-Sentira observes public commentary and news metadata and converts them into time
+Sentira is designed to observe public commentary and news metadata and convert them into time
 series: which subjects gain attention, when they gain it, and in what tone
-institutions are discussed. Measurement is aggregate by construction — the system
-is built so that individual-level profiling is unavailable rather than merely
-discouraged.
+institutions are discussed. The product is designed to exclude person-level reporting. The offline
+foundation is not a complete production privacy boundary.
+
+**Implemented now:** a Python 3.12 foundation for synthetic data, with validated
+documents, HMAC identity separation, restricted target types, atomic SQLite writes
+and strict observation-time reads. No live collector, model or forecast is
+implemented. The sections below describe the intended product unless explicitly
+identified as implemented.
 
 ---
 
@@ -30,8 +35,8 @@ retrospective measurement of how far a known event displaced attention and for h
 long.
 
 Targets are institutional. Topics are drawn from a declared taxonomy. Neither is
-free-form, and this restriction is enforced at configuration load rather than by
-convention.
+free-form, and the offline configuration loader rejects unsupported target types. Full
+collection and topic configuration remain planned.
 
 ## Method
 
@@ -56,8 +61,9 @@ observation time. Cumulative counters are never stored on the document; they are
 recorded in a snapshot table keyed by observation and read only from observations
 made at or before *T*. Material retrieved after *T* contributes only its immutable
 fields, and only where the registered collection policy would have retrieved it by
-*T*; every value so derived is flagged as reconstructed. A single read path
-enforces this, and an invariance test asserts it rather than assuming it.
+*T*; every value so derived is flagged as reconstructed. The offline implementation provides strict observation-time reads only.
+Historical replay is conditional on visibility evidence; survivor-only
+reconstruction cannot establish exact past visibility.
 
 **Survivorship measurement.** Historical retrieval returns only material that still
 exists; moderation and deletion are not independent of political content. The bias
@@ -76,7 +82,8 @@ when, not what a population holds.
 
 **Not an instrument for tracking individuals.** Author identifiers are hashed at the
 collector boundary using HMAC-SHA256 with the platform name included in the input,
-so accounts cannot be linked across platforms. The schema carries no raw-identifier
+so identical identifiers receive different hashes across platforms. This
+does not prevent linkage through content or other information. The schema carries no raw-identifier
 column, and tests assert this against the schema itself.
 
 **Not an open target list.** Stance targets are restricted by schema to political
@@ -86,18 +93,19 @@ be insufficient — leaving the target side unrestricted would permit tone towar
 named individual to be reconstructed from a hashed corpus. The two constraints
 operate together.
 
-**Foresight is bounded by the evidence.** The published literature supports
+**Foresight is bounded by the evidence.** The literature reviewed here supports investigation of
 conditional growth estimation — whether a subject already in motion will grow
-further — and does not support detection of subjects not yet visible. The system
+further — but provides no validated result here for subjects not yet visible. The system
 claims the former only.
 
 ## Design principles
 
-**Constraint by construction.** Privacy properties are enforced through schema and
-test, not asserted in documentation.
+**Constraint by construction.** The offline schema and tests enforce a limited set of identity and temporal
+contracts. Production privacy additionally requires lifecycle controls, access
+restrictions, text handling and output suppression.
 
 **Local inference.** All models run on local hardware; no content is sent to a
-hosted inference service. This removes the question of cross-border transfer. It
+hosted inference service. This avoids hosted inference transfers; it is not a claim about every data flow. It
 does not by itself establish a lawful basis for processing, and no such claim is
 made.
 
@@ -141,9 +149,9 @@ collection, language processing and scoring remain unchanged.
 
 ## Status
 
-**Research preview. No production code at this stage.**
+**Research preview. Offline foundation for synthetic data only.**
 
-The repository holds design documentation and verification records. Implementation
+The repository holds design documentation, an offline foundation and its tests. Implementation
 proceeds in an evidence-first order: feasibility and accuracy are established before
 feature work, on the principle that a capability which cannot be measured cannot be
 represented to a client.
@@ -153,6 +161,9 @@ material is held separately.
 
 | Document | Contents |
 |---|---|
+| [Offline scope](docs/IMPLEMENTATION_START.md) | Approved first implementation and limits |
+| [Source use](docs/SOURCE_USE.md) | Permissions, retention and live-data blockers |
+| [Continuation](docs/CONTINUATION.md) | Current implementation and verification |
 | [Concept](docs/CONCEPT.md) | Definition, boundaries, commitments, open items |
 | [Roadmap](docs/ROADMAP.md) | Design status, decisions carried forward, validation criteria |
 | [Backtest](docs/BACKTEST.md) | Evaluation protocol, phase order, first implementation files |
@@ -163,11 +174,39 @@ material is held separately.
 
 ## Requirements
 
+The offline foundation uses only the Python standard library and needs no GPU or
+API credentials. The model-related requirements below concern later phases.
+
 - Python 3.12; later versions are ahead of the machine-learning stack used here
 - A CUDA-capable GPU is recommended for local inference. The pipeline is designed
   to operate within 8 GB of video memory
 - Credentials for metered sources are supplied through environment variables; see
   `.env.example`
+
+## Run the offline checks
+
+From a local checkout in PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+./.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
+./.venv/Scripts/python.exe -m pip install -e .
+./.venv/Scripts/python.exe -m pytest --cov=sentira --cov-branch --cov-fail-under=80
+./.venv/Scripts/python.exe -m ruff check .
+./.venv/Scripts/python.exe -m ruff format --check .
+```
+
+Dependency installation may access the package index; the tests block network
+connections and use original synthetic fixtures. The end-to-end example is
+`tests/test_offline_e2e.py`: it hashes synthetic identifiers, writes a document and
+counter snapshot, adds a later snapshot, then verifies the earlier view after
+reopening storage. It produces no model accuracy or forecasting claim.
+
+The database is disposable synthetic storage. A `synthetic` provenance declaration
+cannot prove that arbitrary supplied text is synthetic. Do not ingest real content:
+retention, refresh/deletion, access controls and output suppression are not yet
+implemented. Target validation checks the declared type, not documentary evidence
+that a real entity qualifies. See [current limits](docs/CONTINUATION.md).
 
 ## Compliance
 

@@ -5,7 +5,8 @@ Each figure states how it was obtained: *calculated* (arithmetic), *measured*
 source). The distinction matters in practice — a calculation presented as a
 measurement fails at the first question.
 
-Last updated: 2026-09-11
+Last updated: 2026-09-13; historical measurements below were not rerun.
+Current implementation coverage is recorded in [CONTINUATION](CONTINUATION.md).
 
 ---
 
@@ -48,7 +49,7 @@ evaluation is possible at all is the first question the work answers.
 
 | Call | Units | Use |
 |---|---|---|
-| `search.list` | **100** | Not used — exhausts the daily quota in 100 calls |
+| `search.list` | 1 in a separate bucket | Excluded; default 100 calls/day, verified in the current official quota table |
 | `playlistItems.list` | 1 | Video discovery (50 videos per page) |
 | `commentThreads.list` | 1 | Comment retrieval (100 comments per page) |
 | `channels.list` | 1 | Not needed — see below |
@@ -56,21 +57,25 @@ evaluation is possible at all is the first question the work answers.
 A channel's uploads-playlist identifier is its channel identifier with the second
 character replaced by `U` (`UC…` → `UU…`). This derivation removes one unit per
 channel. Discovery by enumerating the upload playlists of a curated channel list,
-rather than by search, yields 50–100 times more data for the same quota.
+rather than by search, follows the frozen channel list. The former 50–100-fold
+quota comparison is withdrawn because search now uses a separate bucket.
 
 > **This is a calculation, not a measurement.** No authenticated call has been made.
 > To convert it: obtain an API key, resolve channel handles, perform one full run,
 > and compare units spent against the estimate. The figure from that run is the one
 > to report.
 
-Data cost: **$0 per month** within the free quota; commercial use is permitted and
-no audit is required at this volume.
+API quota cost is calculated as **$0 per month** within the default allocation;
+this excludes operation, refresh and review costs. It establishes neither
+permission for the intended analytics nor exemption from approval requirements.
+See [SOURCE_USE](SOURCE_USE.md) and the retrieved
+[official quota table](https://developers.google.com/youtube/v3/determine_quota_cost).
 
 ### Platform access — *verified* 2026-09-02 against primary sources
 
 | Platform | Status | Note |
 |---|---|---|
-| **YouTube** | Backbone | 10,000 units/day free; commercial use permitted |
+| **YouTube** | Proposed backbone | Default quota documented; acceptance of the intended use remains unresolved |
 | **X** | Optional | Pay-per-use at $0.005 per read, 2M/month cap; 400k posts ≈ $2,000/month |
 | **Reddit** | Out of scope | Free tier prohibits commercial use; commercial plans from ≈ $12,000/month |
 | **Instagram / TikTok** | Out of scope | No official comment-reading API; scraping breaches terms |
@@ -137,10 +142,13 @@ reasoning disabled, wall-clock timing.
 | 8B domain fine-tune | 1.41 | 709 ms | 19.7 h | 394 h | 30/30 |
 | 4B domain fine-tune | 2.26 | 386 ms | 12.3 h | 245 h | 0/30 |
 
-### Consequence: distillation is required
+### Planning preference: distillation
 
-Two million documents per month would take 168 hours. A large language model cannot
-sit in the production path. It is used only as a **teacher**: it labels a silver
+At the measured sample rate, two million documents would take approximately
+168 hours per month (calculated), or 5.6 hours per day over 30 days. This alone
+does not establish that direct inference is infeasible; sustained load, power,
+latency and competing hardware use remain unmeasured. The preferred design is
+distillation. In that design, the large model is a **teacher**: it labels a silver
 set, a ~110M-parameter encoder is trained on that set, and the encoder runs in
 production. Model selection is recorded in [MODELS.md](MODELS.md).
 
@@ -154,15 +162,15 @@ quality.
 
 ### Teacher choice: qwen3:8b
 
-The only argument for the 4B model would be speed, and there is none (3.21 against
-3.30 docs/s). The 4B model spent its entire 8-token output budget on malformed
+The measured configuration showed no speed advantage for 4B (3.21 against
+3.30 docs/s), but does not establish its best achievable task performance. The 4B model spent its entire 8-token output budget on malformed
 output, while the 8B model produced a valid label in 3.7 tokens on average. The
 smaller model is faster per token but not per task.
 
 *Recorded caveat:* prompts were sent as raw completions through `/api/generate`,
 without the chat template. The 4B model's format failures may be partly due to this
-and might resolve through `/api/chat`. Even so, with no speed advantage there is no
-reason to pursue it.
+and might resolve through `/api/chat`. A fair comparison requires the intended template, adequate output budget and
+the same independent human evaluation set before excluding it.
 
 ### Open item: class balance
 
@@ -208,10 +216,10 @@ agreement is reported — named as such, not as inter-annotator agreement.
 
 ## 5. Data protection
 
-Enforced in code:
+Required for production; only the subset in CONTINUATION is implemented:
 
 - Author identifiers hashed with HMAC-SHA256 at the collector boundary
-- Platform name included in the hash input, preventing cross-platform linkage
+- Platform name included in the hash input, separating identical identifier inputs across platforms; content linkage remains possible
 - No raw-identifier column in the schema, asserted in test
 - Stance targets restricted to parties, institutions and declared candidates,
   asserted in test

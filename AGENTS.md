@@ -4,9 +4,10 @@ Instructions for any agent or contributor working in this repository.
 
 ## What this repository is
 
-Design documentation for Sentira, a system that measures public discourse at the
-aggregate level. **There is no production code yet.** The repository holds the
-design, the evidence behind it, and the record of how each claim was established.
+Sentira measures public discourse at the aggregate level. The repository contains
+design documentation and an **offline foundation for synthetic data only**.
+Production collection, lifecycle controls and forecasting are not implemented.
+Read docs/CONTINUATION.md for the exact tested subset.
 
 Read in this order before changing anything:
 
@@ -17,13 +18,14 @@ Read in this order before changing anything:
 
 ## Constraints that are not open for negotiation
 
-These are architectural decisions, enforced in code rather than promised in prose.
+These are binding architectural requirements. Implemented guarantees require
+named tests; future requirements must not be presented as implemented behaviour.
 Do not relax one because it is inconvenient; raise it instead.
 
 - **Aggregate only.** No individual-level output, no person-level query, no account
   dossier. Not a configuration flag — the schema has no place to put one.
 - **Identity is hashed at the collector boundary**, HMAC-SHA256 with the platform
-  name in the input. No raw identifier reaches storage; tests assert this against
+  name in the input. No raw identifier may reach storage; tests assert this against
   the schema and against the emitted objects.
 - **Stance targets are restricted** by schema to parties, state institutions and
   formally declared candidates. Hashing authors alone would be insufficient: an
@@ -81,11 +83,16 @@ it that way in every file, including commit messages.
 - Definitions, thresholds and matching rules are locked and hashed *before* any
   counting or evaluation runs against them. The evaluation refuses to run against a
   modified registration.
-- No test touches the network; fixtures are recorded responses.
+- No test touches the network. Foundation fixtures are explicitly synthetic;
+  future source-adapter fixtures must be sanitised recorded responses and kept
+  distinguishable from synthetic data.
 
 ## State of play
 
-The design is approved and the implementation has not started. The first phase
+The approved first implementation is an offline synthetic-data foundation.
+The first phase
 counts how many surges the available history contains — it exists to establish
 early, rather than late, whether a retrospective evaluation is possible at all.
-Work is currently blocked on credentials for the metered source.
+Live collection is blocked on source-use acceptance, lifecycle implementation
+and credentials. These do not block offline development. The approved amendment
+is docs/IMPLEMENTATION_START.md; current results are in docs/CONTINUATION.md.
