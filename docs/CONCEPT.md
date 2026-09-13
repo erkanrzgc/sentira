@@ -32,12 +32,13 @@ The defensibility of the product rests on this distinction.
 ### Not an instrument for tracking individuals
 
 Sentira does not produce individual-level stance profiles. This is a deliberate
-architectural decision, enforced in code rather than promised in documentation:
+architectural requirement. The offline subset implements identifier and target
+validation; the remaining production controls are planned:
 
 - Author identifiers are hashed at the collector boundary using HMAC-SHA256; no
   later stage of the system sees a raw identifier
-- The platform name is part of the hash input, so accounts held by the same person
-  on different platforms cannot be linked
+- The platform name is part of the hash input, so the same input identifier hashes differently across platforms; this
+  does not prevent linkage through content
 - The storage schema carries no raw-identifier column, and a test asserts this
   against the schema itself
 - Stance targets are restricted to political parties, state institutions and
@@ -64,8 +65,9 @@ ethical rather than technical.
 | **Sentira** | **Here** | Out of scope |
 
 What makes entity-resolution platforms contested is not their technology but their
-capacity to assemble individual-level dossiers. Sentira excludes that capability by
-construction.
+capacity to assemble individual-level dossiers. Sentira excludes person-level reporting from its product contract. Persistent
+hashes still permit internal within-source linkage and must not be described as
+anonymity.
 
 ### Differentiation
 
@@ -75,7 +77,7 @@ Established vendors process far greater volume. The advantage claimed is not sca
    time — its morphology, non-standard orthography, emoji use and informal register
    — rather than relying on a multilingual default.
 2. **Local operation.** Models run on the operator's hardware and content does not
-   leave it. Hosted services cannot offer this.
+   leave it. This is an operating choice; exclusive market differentiation is not established.
 3. **Privacy by construction.** Aggregate-only measurement and identity hashing are
    the architecture itself, not a compliance layer added afterwards.
 
@@ -111,7 +113,7 @@ Items that must be closed before any figure is represented to a client:
 2. **Accuracy is not measured.** Sentiment and stance macro-F1 follow the gold
    standard. Every F1 is reported beside a majority-class baseline; an accuracy
    claim without its baseline does not survive the first meeting.
-3. **Lawful basis for processing.** Local inference addresses cross-border transfer.
+3. **Lawful basis for processing.** Local inference avoids sending content to a hosted inference service.
    It does not establish a lawful basis: classifying political opinion is processing
    of special-category data wherever the hardware sits. The data-protection
    authority's published guidance on election-related processing does not address

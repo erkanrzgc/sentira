@@ -9,6 +9,46 @@ the internal research material.*
 
 ---
 
+## Implementation amendment — 2026-09-13
+
+The approved [implementation scope](IMPLEMENTATION_START.md) qualifies this
+protocol. The first code increment implements only strict observation-time reads
+on synthetic data. The tables below map future guarantees as well as that subset;
+their presence is not evidence that Phase 1 exists or that history is backtestable.
+Source permissions and lifecycle conditions are tracked in [SOURCE_USE](SOURCE_USE.md).
+
+Historical replay requires evidence of past visibility. A surviving corpus alone
+cannot provide it: at a 1,000-thread cap, a row originally behind 1,000 newer rows
+was not returned. If 200 newer rows disappear before retrieval, replay on survivors
+can incorrectly admit it. This is a constructed counterexample, not a measurement.
+Exact replay tests therefore require complete recorded visibility histories.
+Survivor-only reconstruction is exploratory, not confirmatory evidence; strict
+prospective observations are the confirmatory route when visibility is unknown.
+Neither a survival percentage nor a fixed p90 latency proves exact historical
+visibility. Report discrepancies on live controls instead of asserting equality.
+
+Discovery precedes polling. No poll runs before discovery. At discovery, missed
+due ages are coalesced into one immediate poll; future ages remain anchored to
+publication. If no age is due, wait for the next age. At a restart, coalesce missed
+due jobs similarly, preserving completed-job identities to avoid duplicate work.
+Record missed ages, scheduled time and actual delivery separately. An immediate
+catch-up after the last registered age is a live observation only; it does not
+retroactively make comments replay-visible under the earlier age schedule.
+
+Registration order is: lock `pilot.yaml` (sample, strata, schedule, quota ceiling,
+adaptation rules and pilot span) -> bounded pilot -> lock main registration v1
+(including D0 and O1) -> retrieve the pre-origin span -> lock measured addendum ->
+confirmatory evaluation. Pilot data cannot enter confirmatory test folds. Use a
+small fixed stratified sample rather than the former all-channel ten-week pilot.
+The numerical pilot budget must be registered before execution; none is enabled
+by the offline increment. The pilot report includes refresh and deletion costs.
+
+First observation wins for provenance, not for perpetual content retention.
+Production refresh/deletion rules take precedence over reproducibility; after
+required deletion, identify affected results as no longer reproducible. The
+offline database is disposable synthetic storage and implements no production
+lifecycle. Production ingestion remains disabled until that design is resolved.
+
 ## 0. The point-in-time rule, reconciled with historical retrieval
 
 ### 0.1 The conflict
@@ -95,9 +135,9 @@ Three consequences are stated rather than hidden:
    for descriptive measurement (T2), flagged.
 2. Information arrives in **lumps** at poll times. A deployed system learns of a
    surge at a poll, not at a comment. §A.2 makes that the conditioning instant.
-3. The replay rule is falsifiable against reality: on live-observed videos, replay
-   visibility must reproduce live visibility. That is a named test, not an
-   assumption.
+3. Test exact replay on complete recorded visibility histories. On real
+   re-retrievals, measure visibility differences; deleted rows, moderation,
+   discovery delays and variable job latency can prevent exact reconstruction.
 
 The carve-out applies only to `UTTERANCE` rows from a source with a registered
 retrieval path. **`PUBLICATION` rows are visible only where `observed_at ≤ T`**: a
@@ -131,11 +171,11 @@ forward-only.
 
 ---
 
-## 1. What is backtestable now
+## 1. Candidate retrospective and forward-only components
 
 | Component | Retrospective history | Status |
 |---|---|---|
-| `public_engagement` — top-level comment count | Yes, reconstructed under §0.3; depth bounded by the retrieval reservation, **not yet measured** | **Backtestable**, flagged reconstructed, printed with its survival rate |
+| `public_engagement` — top-level comment count | Reconstruction is conditional on historical visibility evidence; depth **not yet measured** | Survivor-only reconstruction is exploratory; use strict prospective observations for confirmation when visibility is unknown |
 | `public_engagement` — views, likes, reply totals | None (counters) | **Forward-only** |
 | `tone` | Reconstructable for text not edited after *T* | Descriptive only; decoupled from forecasting (sentiment scores at chance for growth prediction — *verified for photo-reshare cascades; transfer to this platform and language unmeasured*). Not produced before the gold standard exists |
 | `media_attention` | None: feeds carry the current window only (*measured*, 11 of 11 working feeds) | **Forward-only** from the first day of feed collection |
@@ -174,7 +214,7 @@ finding 1).
 ### A.2 Unit of analysis and the conditioning instant
 
 **Topic × interval.** Topics come from the declared taxonomy, assigned by a lexical
-rule set frozen and hashed before retrieval. Assignment is **single-label** by a
+rule set frozen and hashed before confirmatory retrieval. Assignment is **single-label** by a
 registered priority rule: multi-label assignment would let one event open several
 episodes sharing the same comments, and *K*min could then be reached on duplicated
 evidence. Episodes that open within 24 h of one another and share more than a
@@ -269,7 +309,7 @@ the target alert volume.
 
 | Element | Rule |
 |---|---|
-| Registered constants | History start *D*₀ and first origin *O*₁ = *D*₀ + 118 d (28 d burn-in + 90 d training) are fixed in v1 before retrieval, sized by the pilot (§B) |
+| Registered constants | History start *D*₀ and first origin *O*₁ = *D*₀ + 118 d (28 d burn-in + 90 d training) are fixed in v1 after the separately registered pilot and before confirmatory retrieval (§B) |
 | Pre-origin span | [*D*₀, *O*₁): never a test fold; the only source of *H*, *c*min, *k*floor and the MDE simulation |
 | Training window | Rolling 90 days; expanding within regime as sensitivity |
 | Step and test fold | 7 days; refit weekly; an episode belongs to the fold containing its τ_k |
@@ -372,7 +412,11 @@ clients.
 
 ### A.9 Pre-registration
 
-- **Registration v1** (`config/preregistration.yaml`), locked before retrieval:
+- **Pilot registration** (`config/pilot.yaml`), locked before any pilot collection:
+  sample, strata, schedule, quota ceiling, span and permitted adaptations. Pilot
+  data are excluded from confirmatory test folds.
+- **Registration v1** (`config/preregistration.yaml`), locked after the pilot and
+  before confirmatory retrieval:
   every definition in §A.2–A.8; the collection policy *P* of §0.3; the grid, primary
   cell and fallback; the timing-only specification; *K*min and the week floor;
   *D*₀ and *O*₁; the cut-offs; alert targets; integrity windows, thresholds and
@@ -450,7 +494,7 @@ for one developer.
 
 | Phase | Slice | Feasibility question | Exit criterion |
 |---|---|---|---|
-| **1. Count the positives** | Frozen config and registration → live collection under policy *P*, feed collection, pilot, retrieval → as-of reader → raw and cleaned `public_engagement` → episodes → positive count per cell | Does available history hold enough surges to evaluate conditional growth, and at what quota cost? (Q1 volume, Q3 cost) | (a) v1 locked before retrieval; addendum locked only after the pre-origin span is complete. (b) λ from ≥ 7 days live; replay reproduces live visibility on fixtures. (c) Counts of eligible, positive, negative, censored and detected-at-crossing episodes per cell and span. (d) 7-day survival and coverage on complete strata. (e) Stratified topic audit with recall estimate, passing its registered floor. (f) Quota units spent equal the ledger; threads per video *measured*; monthly cost from ledger and disk. **Pass:** primary or fallback cell ≥ *K*min per class **and** ≥ 20 test weeks with a positive. **Otherwise:** the registered finding of §A.9 |
+| **1. Count the positives** | Frozen config and registration → live collection under policy *P*, feed collection, pilot, retrieval → as-of reader → raw and cleaned `public_engagement` → episodes → positive count per cell | Does available history hold enough surges to evaluate conditional growth, and at what quota cost? (Q1 volume, Q3 cost) | (a) pilot locked before pilot collection; v1 locked before confirmatory retrieval; addendum locked only after the pre-origin span is complete. (b) λ from ≥ 7 days live; exact replay checked on complete recorded histories; real reconstruction discrepancies reported. (c) Counts of eligible, positive, negative, censored and detected-at-crossing episodes per cell and span. (d) 7-day survival and coverage on complete strata. (e) Stratified topic audit with recall estimate, passing its registered floor. (f) Quota units spent equal the ledger; threads per video *measured*; monthly cost from ledger and disk. **Pass:** primary or fallback cell ≥ *K*min per class **and** ≥ 20 test weeks with a positive. **Otherwise:** the registered finding of §A.9 |
 | **2. Conditional growth against baselines** | Walk-forward harness → baserate, persistence, timing-only → the metrics of §A.7 | Does timing beat baserate on this platform and language, and is a multi-day horizon meaningful given the measured half-life? | Primary endpoint with interval, and every §A.7 metric by slice, flagged reconstructed with survival. A null is reported against the registered MDE. Skipped if Phase 1 did not pass; T1 then waits on live accrual |
 | **3. Language-layer accuracy** | Training toolchain demonstrated on the target machine → annotation harness → gold standard → teacher → student → descriptive `tone` | Q2: is the tone signal accurate enough to report? | ROADMAP thresholds: sentiment ≥ 0.75, stance ≥ 0.65 macro-F1, each above its majority-class and random baselines; intra-annotator agreement on 100 items re-labelled after ≥ 1 week. Below threshold is a finding |
 | **4. Event log, impact, end-to-end** | Curated log (frozen during Phase 1) → T3, then T2 | Do known events register in the series, and is displacement distinguishable from placebo? | T3 criterion of §A.12 on ≥ 20 events; T2 table with placebo counts, percentiles and survival rates |
@@ -463,15 +507,17 @@ re-label needs a week's gap in any case.
 
 ### Phase 1 in order
 
-1. Write and lock registration v1; freeze taxonomy and channel list by rules
+1. Write and lock the pilot registration; freeze pilot taxonomy and sample by rules
    written without reference to any event, and referencing no counter. **The surge
    definition exists before a single episode is counted.**
 2. Start live collection under policy *P* and feed collection — the survivorship
    clock and the forward-only clock. Start annotation.
-3. **Pilot** (label-free): retrieve the newest ten weeks for all channels; measure
+3. **Pilot** (label-free): retrieve the registered bounded span for the fixed
+   stratified channel sample; measure
    threads per video and the eligible-episode rate; project the depth needed for
    about 4 × *K*min eligible episodes; set *D*₀ within the retrieval reservation and
-   register it. Where the projection exceeds the reservation, *D*₀ is set to what
+   register it in main v1 before confirmatory retrieval. Pilot data are excluded
+   from confirmatory test folds. Where the projection exceeds the reservation, *D*₀ is set to what
    the reservation buys and the shortfall is stated in the count report.
 4. Enumerate upload playlists back to *D*₀ for every channel, then retrieve the
    **pre-origin span first**, exhausting every video published in
@@ -506,8 +552,10 @@ rather than late.
 
 ## C. Phase 1 file list
 
-Package root `sentira/`; tests mirror it under `tests/`. Fixtures are recorded API
-and feed responses; no test touches the network.
+Package root `sentira/`; tests mirror it under `tests/`. Future collector fixtures
+are sanitised recorded API and feed responses; the offline foundation uses original
+synthetic fixtures. No test touches the network. This is the full Phase 1 map;
+[CONTINUATION](CONTINUATION.md) lists the smaller implemented subset and actual test names.
 
 | File | Responsibility | Named test (file :: function) |
 |---|---|---|

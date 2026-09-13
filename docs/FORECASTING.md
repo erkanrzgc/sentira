@@ -9,8 +9,7 @@ from this record and are not used in client material.
 
 ## Summary
 
-The claim "a subject that is quiet now will surge within days" has **no published
-accuracy figure**. Every figure available concerns a conditional task: content that
+The claim "a subject that is quiet now will surge within days" has **no validated accuracy figure in the reviewed evidence**. Every figure available concerns a conditional task: content that
 has already reached a threshold, or warnings generated from an external event
 stream. Four independent lines of evidence converge on the same limit:
 
@@ -46,15 +45,16 @@ claims that, and only that.
 
 ## Negative findings
 
-1. **No published accuracy exists for detecting subjects that are not yet
-   visible.**
-2. **The ceiling is real and low.** It is a property of social systems, not a
-   shortfall of current models.
-3. **Sentiment performs at chance for growth prediction.**
+1. **No validated accuracy for subjects not yet visible was located in this
+   review.** This is a search finding, not proof that none exists.
+2. **The cited studies show prediction limits in their evaluated settings.**
+   They do not establish a universal ceiling for this project.
+3. **Sentiment performed at chance in the cited cascade experiment.** Transfer
+   to this source and target language remains unmeasured.
 4. **The best operational system is only slightly ahead of a naive baserate.**
 5. **Long lead times come from calendars, not prediction.**
-6. **No accuracy figure exists for the target language or for video-platform
-   commentary.** All evidence comes from other platforms and regions;
+6. **No validated accuracy figure for the target language or video-platform
+   commentary was located in this review.** All evidence comes from other platforms and regions;
    transferability is unmeasured.
 7. **Readily found high figures are usually unsound.** Values such as "94% trend
    prediction accuracy" circulate without a task definition or base rate, and
@@ -64,7 +64,9 @@ claims that, and only that.
 
 ## Leakage controls
 
-Enforced in code, not left to convention:
+Required design controls. The current offline implementation tests strict
+observation-time reads only; forecasting and historical replay remain unimplemented.
+Survivor-only reconstruction is exploratory under the BACKTEST amendment:
 
 1. **Cumulative counters are contaminated.** In historical retrieval, a comment's
    publication time is faithful to the past, but view, comment and like counts are
