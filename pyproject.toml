@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentira"
+version = "0.1.0.dev0"
+description = "Offline contracts for aggregate discourse measurement"
+requires-python = ">=3.12,<3.13"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["sentira*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--strict-markers --import-mode=importlib"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.coverage.run]
+branch = true
+source = ["sentira"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
