@@ -114,6 +114,10 @@ material issue in the recheck. Views now filter against the selected source
 registration. Every reference must cover all domains of its parent claim; split
 claims by domain when their evidence differs.
 
+The increment was fast-forwarded into local main and reverified: 147 tests,
+93.21% combined coverage, clean Ruff lint/format and identical example output.
+The generated worktree was removed. No push or release was performed.
+
 ### Limits specific to this increment
 
 - All claims and links are fictional. Rights references are synthetic identifiers,
