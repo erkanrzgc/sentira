@@ -173,6 +173,7 @@ material is held separately.
 | Document | Contents |
 |---|---|
 | [Offline scope](docs/IMPLEMENTATION_START.md) | Approved first implementation and limits |
+| [Data pilot](docs/DATA_PILOT.md) | Source qualification and manual evaluation before models |
 | [Source use](docs/SOURCE_USE.md) | Permissions, retention and live-data blockers |
 | [Continuation](docs/CONTINUATION.md) | Current implementation and verification |
 | [Scenario design](docs/SCENARIO_DESIGN.md) | Three-domain briefing contracts and implementation boundaries |
