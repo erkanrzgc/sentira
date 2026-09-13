@@ -83,7 +83,7 @@ Files: `sentira/report/briefing.py`, `sentira/cli.py`,
 - [x] Independent review; reproduce and fix actionable defects with regression tests.
 - [x] Update README, SCENARIO_DESIGN, CONTINUATION and the plan with exact measured
   results and limits. Check generic terminology, file links and Git whitespace.
-- [ ] Commit locally, fast-forward a still-clean main checkout, verify there and
+- [x] Commit locally, fast-forward a still-clean main checkout, verify there and
   remove only the generated worktree. No push, live source, model or forecast.
 
 ## Implementation decisions
@@ -114,3 +114,6 @@ leakage in views and incomplete domain coverage in corroboration references.
 Both defects were reproduced by failing regression tests, fixed and independently
 rechecked (52 briefing tests passed). References now cover every parent domain;
 views retain only evidence matching the selected source registration.
+
+Local main verification matched the worktree: 147 tests, 93.21% coverage, clean
+lint/format and identical report hash. Generated worktree removed; no push.
