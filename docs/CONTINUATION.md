@@ -38,6 +38,11 @@ Measured on the final worktree run: **95 tests passed**, **94.99% statement and
 branch coverage combined**, with Ruff lint and format checks passing. Editable
 package installation succeeded. These are software checks, not model accuracy.
 
+The work was fast-forwarded into the local main checkout and reverified there:
+95 tests passed, combined coverage remained 94.99%, and lint/format checks passed.
+The project-local `.venv` is ready to run the README commands. No push or release
+was performed.
+
 Independent review identified a duplicate-ingestion clock-watermark defect. The
 new regression first failed, then passed after a transactional `write_state` table
 was added. The reviewer rechecked both clock regression and rollback across reopen;
