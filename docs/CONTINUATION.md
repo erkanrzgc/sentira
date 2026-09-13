@@ -134,8 +134,12 @@ The generated worktree was removed. No push or release was performed.
 
 ## Next bounded work
 
-Review the generated fictional report for usefulness before adding live sources.
-Numerical forecasting and a downloaded local model remain separate later work.
+The operator accepted the fictional report and subsequently prioritised data and
+manual evaluation over model selection. The local analyst design is deferred.
+See [DATA_PILOT](DATA_PILOT.md) for source qualification, the proposed 18-case
+worksheet and review rubric. Concrete source research remains outside the repository.
+No real case has yet been populated or human-reviewed. Numerical forecasting and
+a downloaded local model remain separate later work.
 The existing production-readiness work remains necessary:
 
 1. Resolve source-use conditions in SOURCE_USE alongside a concrete lifecycle

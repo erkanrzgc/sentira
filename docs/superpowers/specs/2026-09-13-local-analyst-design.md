@@ -1,7 +1,8 @@
 # Local analyst pilot
 
-Status: analyst-first direction approved on 2026-09-13; this bounded design is
-prepared for operator review. No model has been selected, downloaded or trained.
+Status: design accepted on 2026-09-13, then deferred by the operator in favour
+of source qualification and manual evaluation. See ../../DATA_PILOT.md. No model
+has been selected, downloaded or trained. This design is not the immediate task.
 
 ## Purpose and alternatives
 
