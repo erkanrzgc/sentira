@@ -18,6 +18,13 @@ and how that tone moves over time.
 
 ## 2. What it is not
 
+The approved product direction now also includes an experimental institutional
+scenario track for elections, government policy and regional conflict. See
+[SCENARIO_DESIGN](SCENARIO_DESIGN.md) for the detailed proposal. It complements
+aggregate discourse measurement rather than treating it as a proxy for election
+outcomes or conflict risk. No new forecasting capability is claimed, and all
+person-level and source-use exclusions below continue to apply.
+
 The boundary is stated before the capability. A product whose limits are not
 written down in advance will be asked, later, for something it does not do.
 

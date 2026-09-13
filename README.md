@@ -19,6 +19,11 @@ and strict observation-time reads. No live collector, model or forecast is
 implemented. The sections below describe the intended product unless explicitly
 identified as implemented.
 
+**New product direction:** operator-reviewed scenario briefings for elections,
+government policy and regional conflict. The [detailed design](docs/SCENARIO_DESIGN.md)
+and [fictional sample](docs/SCENARIO_SAMPLE.md) define the proposed next increment.
+It is not implemented or validated by the existing discourse-growth protocol.
+
 ---
 
 ## What the system produces
@@ -98,6 +103,10 @@ conditional growth estimation — whether a subject already in motion will grow
 further — but provides no validated result here for subjects not yet visible. The system
 claims the former only.
 
+The separate scenario track explores broader institutional questions through
+attributed evidence and explicit uncertainty. It introduces no validated prediction
+claim or numerical probability; prospective forecasts require a separate protocol.
+
 ## Design principles
 
 **Constraint by construction.** The offline schema and tests enforce a limited set of identity and temporal
@@ -164,6 +173,8 @@ material is held separately.
 | [Offline scope](docs/IMPLEMENTATION_START.md) | Approved first implementation and limits |
 | [Source use](docs/SOURCE_USE.md) | Permissions, retention and live-data blockers |
 | [Continuation](docs/CONTINUATION.md) | Current implementation and verification |
+| [Scenario design](docs/SCENARIO_DESIGN.md) | Three-domain briefing contracts and implementation boundaries |
+| [Scenario sample](docs/SCENARIO_SAMPLE.md) | Entirely fictional example of the proposed briefing |
 | [Concept](docs/CONCEPT.md) | Definition, boundaries, commitments, open items |
 | [Roadmap](docs/ROADMAP.md) | Design status, decisions carried forward, validation criteria |
 | [Backtest](docs/BACKTEST.md) | Evaluation protocol, phase order, first implementation files |
