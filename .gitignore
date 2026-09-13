@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
+.ruff_cache/
+htmlcov/
+build/
+dist/
+*.egg-info/
 
 # Secrets
 .env
