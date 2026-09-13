@@ -9,6 +9,12 @@ from this record and are not used in client material.
 
 ## Summary
 
+Scope note, 2026-09-13: this evidence review and its protocol concern aggregate
+discourse growth. The separate [scenario design](SCENARIO_DESIGN.md) explores
+institutional election, policy and conflict questions. It does not inherit these
+accuracy figures or validation thresholds. Qualitative scenarios are explicitly
+distinguished from issued and subsequently scored forecasts.
+
 The claim "a subject that is quiet now will surge within days" has **no validated accuracy figure in the reviewed evidence**. Every figure available concerns a conditional task: content that
 has already reached a threshold, or warnings generated from an external event
 stream. Four independent lines of evidence converge on the same limit:

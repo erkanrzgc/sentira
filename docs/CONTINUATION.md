@@ -73,6 +73,18 @@ provenance only and is not visible to the feature reader.
 
 ## Next bounded work
 
+The user subsequently approved a three-domain scenario-briefing direction, with
+the operator as the first user and possible institutional sales later. The new
+[detailed design](SCENARIO_DESIGN.md) and [fictional sample](SCENARIO_SAMPLE.md)
+are prepared for review. No runtime code changed in this design increment; the
+95-test result above belongs to the preceding implementation verification.
+
+The proposed next coding slice is a synthetic evidence ledger, TOML configuration
+and deterministic three-domain Markdown briefing, after the written design review.
+Domain settings, source lists and question definitions belong in validated external
+files; secrets remain in the environment. Numerical forecasting and live sources
+are deferred. The existing production-readiness work remains necessary:
+
 1. Resolve source-use conditions in SOURCE_USE alongside a concrete lifecycle
    design. Determine what can be stored, refreshed, deleted and reproduced.
 2. Specify a fixed small pilot sample, quota ceiling, schedule and separate pilot
