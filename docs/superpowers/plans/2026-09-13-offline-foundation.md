@@ -106,7 +106,7 @@ assert AsOfReader(repository).read(at) == before
   tests, and repeat affected checks.
 - [x] Record exact commands, results, implemented guarantees and live-data
   blockers in `docs/CONTINUATION.md`; update the README's local instructions.
-- [ ] Commit locally and integrate the verified change into the project checkout
+- [x] Commit locally and integrate the verified change into the project checkout
   if it is still clean and can be fast-forwarded. Do not push or publish.
 
 ## Scope audit
@@ -126,3 +126,6 @@ recorded platform responses, and cannot substantiate platform behaviour.
 - Final worktree run: 95 tests, 94.99% combined statement/branch coverage, clean
   Ruff lint/format checks and successful isolated installed-package smoke.
 - No real-source fixture, credential, internal research or live content was used.
+- Fast-forward integration into the local main checkout completed. A fresh local
+  virtual environment installed the pinned tools and editable package. The same
+  95 tests, 94.99% combined coverage and Ruff checks passed in that checkout.
