@@ -1,0 +1,92 @@
+# Fictional fixture, not a record of real publications. No URL is fetched.
+mode = "synthetic"
+
+[[evidence]]
+evidence_id = "e1"
+source_id = "electoral"
+domain_ids = ["elections"]
+source_url = "https://electoral.example.invalid/draft"
+published_at = 2030-01-01T09:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "A draft timetable was published for consultation."
+attribution = "Fictional electoral institution"
+original_source_group = "electoral-origin"
+evidence_status = "attributed"
+support_ids = []
+contradiction_ids = []
+rights_record_id = "synthetic-rights"
+
+[[evidence]]
+evidence_id = "p1"
+source_id = "policy"
+domain_ids = ["government_policy"]
+source_url = "https://policy.example.invalid/consultation"
+published_at = 2030-01-01T08:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "Consultation on a fictional service proposal was announced."
+attribution = "Fictional policy institution"
+original_source_group = "policy-origin"
+evidence_status = "attributed"
+support_ids = []
+contradiction_ids = ["p2"]
+rights_record_id = "synthetic-rights"
+
+[[evidence]]
+evidence_id = "p2"
+source_id = "legislature"
+domain_ids = ["government_policy"]
+source_url = "https://legislature.example.invalid/agenda"
+published_at = 2030-01-01T10:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "The legislative agenda lists discussion, not an adoption vote."
+attribution = "Fictional legislative institution"
+original_source_group = "legislative-origin"
+evidence_status = "attributed"
+support_ids = []
+contradiction_ids = []
+rights_record_id = "synthetic-rights"
+
+[[evidence]]
+evidence_id = "c1"
+source_id = "diplomatic_a"
+domain_ids = ["regional_conflict"]
+source_url = "https://party-a.example.invalid/invitation"
+published_at = 2030-01-01T09:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "Institutional party A proposed a meeting."
+attribution = "Fictional institutional party A"
+original_source_group = "party-a-origin"
+evidence_status = "attributed"
+support_ids = []
+contradiction_ids = ["c2"]
+rights_record_id = "synthetic-rights"
+
+[[evidence]]
+evidence_id = "c2"
+source_id = "diplomatic_b"
+domain_ids = ["regional_conflict"]
+source_url = "https://party-b.example.invalid/statement"
+published_at = 2030-01-01T10:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "Institutional party B stated that preconditions remain unsettled."
+attribution = "Fictional institutional party B"
+original_source_group = "party-b-origin"
+evidence_status = "attributed"
+support_ids = []
+contradiction_ids = []
+rights_record_id = "synthetic-rights"
+
+[[evidence]]
+evidence_id = "c3"
+source_id = "syndicated"
+domain_ids = ["regional_conflict"]
+source_url = "https://syndicated.example.invalid/repetition"
+published_at = 2030-01-01T11:00:00Z
+expires_at = 2030-02-01T00:00:00Z
+claim = "A second outlet repeats party A's invitation without an independent source."
+attribution = "Fictional syndicated outlet"
+original_source_group = "party-a-origin"
+evidence_status = "attributed"
+support_ids = ["c1"]
+contradiction_ids = []
+rights_record_id = "synthetic-rights"

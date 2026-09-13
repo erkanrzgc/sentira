@@ -1,0 +1,72 @@
+[[questions]]
+id = "election-timetable-v1"
+domain_id = "elections"
+prompt = "What changed ahead of the timetable review?"
+registered_at = 2029-12-31T00:00:00Z
+deadline = 2030-01-15T12:00:00Z
+review_at = 2030-01-08T12:00:00Z
+resolution_source_id = "electoral"
+outcome_rule = "A final institutional timetable is published."
+invalidation_rule = "Record cancellation of the consultation separately."
+
+[[questions.scenarios]]
+id = "draft-proceeds"
+title = "The timetable proceeds without a substantive date change"
+summary = "A consultation exists, but a final timetable is not established."
+support_ids = ["e1"]
+contradiction_ids = []
+unknowns = ["No final timetable or eligible aggregate survey was supplied."]
+strengthen = "Publication of the final timetable."
+weaken = "Publication of a substantive revision."
+
+[[questions]]
+id = "policy-adoption-v1"
+domain_id = "government_policy"
+prompt = "Will the fictional service proposal be formally adopted within the horizon?"
+registered_at = 2029-12-31T00:00:00Z
+deadline = 2030-01-31T12:00:00Z
+review_at = 2030-01-08T12:00:00Z
+resolution_source_id = "legislature"
+outcome_rule = "An official adoption record names the proposal."
+invalidation_rule = "A withdrawn proposal is invalidated, not silently removed."
+
+[[questions.scenarios]]
+id = "proposal-advances"
+title = "The proposal advances to a formal vote"
+summary = "Consultation and discussion are announced; adoption remains unestablished."
+support_ids = ["p1"]
+contradiction_ids = ["p2"]
+unknowns = ["Implementation funding and voting date are unknown."]
+strengthen = "An official voting agenda."
+weaken = "Withdrawal or postponement of the proposal."
+
+[[questions.scenarios]]
+id = "discussion-continues"
+title = "The proposal remains under discussion"
+summary = "The supplied agenda provides for discussion only."
+support_ids = ["p2"]
+contradiction_ids = []
+unknowns = ["Later scheduling could change the formal stage."]
+strengthen = "A further discussion-only agenda."
+weaken = "A published adoption record."
+
+[[questions]]
+id = "joint-meeting-v1"
+domain_id = "regional_conflict"
+prompt = "Will the fictional institutional parties jointly announce a meeting?"
+registered_at = 2029-12-31T00:00:00Z
+deadline = 2030-01-08T12:00:00Z
+review_at = 2030-01-08T12:00:00Z
+resolution_source_id = "diplomatic_a"
+outcome_rule = "A joint announcement identifies both institutional parties."
+invalidation_rule = "A cancelled negotiation is reported separately."
+
+[[questions.scenarios]]
+id = "joint-announcement"
+title = "A joint meeting is announced"
+summary = "One invitation is public; the other party has not accepted."
+support_ids = ["c1", "c3"]
+contradiction_ids = ["c2"]
+unknowns = ["Private discussions are unobserved; these records do not establish conflict risk."]
+strengthen = "A joint statement or separately attributable confirmations."
+weaken = "A formal rejection of the invitation."

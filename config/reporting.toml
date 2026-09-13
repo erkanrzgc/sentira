@@ -1,0 +1,5 @@
+mode = "synthetic"
+registered_at = 2029-12-31T00:00:00Z
+change_window_hours = 24
+freshness_hours = 72
+format = "markdown"

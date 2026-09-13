@@ -65,25 +65,74 @@ provenance only and is not visible to the feature reader.
   It stores first-seen synthetic text without a production refresh/deletion system.
   Snapshot conflicts at the same document/time/metric fail atomically.
 - No historical replay, quota ledger, scheduling, registration execution, topic
-  classification, integrity screening, language model, forecast or report exists.
+  classification, integrity screening, language model or numerical forecast exists.
+  A separate synthetic scenario report is implemented as described below.
 - No retention, backup expiry, output suppression, text redaction or client access
   control has been implemented. Do not use this foundation to store real content.
 - Numerical pilot budgets, output suppression thresholds and real entity evidence
   remain to be registered before their respective features are enabled.
 
+## Synthetic briefing increment
+
+The detailed scenario design and sample were approved on 2026-09-13. The offline
+implementation now loads four TOML configuration files and fictional evidence,
+registers them in a separate SQLite ledger and renders all three domains through
+one Markdown pipeline. The README contains the runnable command.
+
+Configuration and evidence are immutable validated records. Unknown fields,
+unregistered references, mismatched origins, ambiguous timestamps and changed
+question definitions under an existing identifier fail. Support and revision
+cycles fail; mutual contradictions are permitted. Observation belongs to storage;
+the CLI supplies an explicit simulation clock and uses an ephemeral ledger.
+
+The single evidence view excludes later observations and expired records. Later
+writes do not change earlier reports. Registration must itself have been observed
+by the cutoff. The ledger preserves first observation and advances its monotonic
+write watermark even for unchanged duplicate batches. Writes and registration
+roll back together on validation failure.
+
+The report records the configuration digest, source attribution, content digests,
+publication/observation/expiry times, counterevidence, missing sources, stale
+records, scenario triggers and review dates. Repeated origins count once.
+Corroboration cannot be promoted by an unavailable or same-origin supporting
+record. Unsupported scenario text is withheld. Markdown and HTML text are escaped.
+
+### Verification of the briefing increment
+
+Measured in the isolated implementation checkout: **147 tests passed**, including
+52 briefing tests; combined statement and branch coverage **93.21%**. Ruff lint
+and formatting passed. Editable installation succeeded and two separate CLI runs
+produced byte-identical Markdown files (SHA-256
+`0a3dddc8fb1f82e98c15eecbd54eeedcd243e388e998c2bbf6dd394bcc2b49af`).
+These figures describe software verification, not forecasting accuracy.
+
+Independent review reproduced two defects: a view admitted sources outside its
+selected registration, and a multi-domain claim could borrow corroboration from
+only one domain. Both regression tests failed before the fixes and passed after
+them. The reviewer independently reran all 52 briefing tests and found no further
+material issue in the recheck. Views now filter against the selected source
+registration. Every reference must cover all domains of its parent claim; split
+claims by domain when their evidence differs.
+
+### Limits specific to this increment
+
+- All claims and links are fictional. Rights references are synthetic identifiers,
+  not verified permissions. Domain and attribution text is operator supplied;
+  this is not a semantic detector of personal information or institutional status.
+- Expiry is a cutoff visibility simulation, not physical deletion or suppression
+  of already exported reports. Production lifecycle controls are still absent.
+- Scenario drafts are operator-authored. The program checks support references;
+  it does not establish whether their meaning entails a scenario or contradicts it.
+- The CLI starts a new ledger each run. Persistent question locking is available
+  through the storage API; immutable report issuance and outcome scoring are deferred.
+- Missing coverage describes fixture availability. There are no live fetch attempts,
+  collection-success claims, automatic resolutions or forecast probabilities.
+
 ## Next bounded work
 
-The user subsequently approved a three-domain scenario-briefing direction, with
-the operator as the first user and possible institutional sales later. The new
-[detailed design](SCENARIO_DESIGN.md) and [fictional sample](SCENARIO_SAMPLE.md)
-are prepared for review. No runtime code changed in this design increment; the
-95-test result above belongs to the preceding implementation verification.
-
-The proposed next coding slice is a synthetic evidence ledger, TOML configuration
-and deterministic three-domain Markdown briefing, after the written design review.
-Domain settings, source lists and question definitions belong in validated external
-files; secrets remain in the environment. Numerical forecasting and live sources
-are deferred. The existing production-readiness work remains necessary:
+Review the generated fictional report for usefulness before adding live sources.
+Numerical forecasting and a downloaded local model remain separate later work.
+The existing production-readiness work remains necessary:
 
 1. Resolve source-use conditions in SOURCE_USE alongside a concrete lifecycle
    design. Determine what can be stored, refreshed, deleted and reproduced.

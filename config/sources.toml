@@ -1,0 +1,48 @@
+[[sources]]
+id = "electoral"
+label = "Fictional electoral institution"
+url = "https://electoral.example.invalid/"
+origin_group = "electoral-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "policy"
+label = "Fictional policy institution"
+url = "https://policy.example.invalid/"
+origin_group = "policy-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "legislature"
+label = "Fictional legislative institution"
+url = "https://legislature.example.invalid/"
+origin_group = "legislative-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "diplomatic_a"
+label = "Fictional institutional party A"
+url = "https://party-a.example.invalid/"
+origin_group = "party-a-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "diplomatic_b"
+label = "Fictional institutional party B"
+url = "https://party-b.example.invalid/"
+origin_group = "party-b-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "syndicated"
+label = "Fictional repetition of party A"
+url = "https://syndicated.example.invalid/"
+origin_group = "party-a-origin"
+rights_record_id = "synthetic-rights"
+
+[[sources]]
+id = "survey"
+label = "Fictional aggregate survey source"
+url = "https://survey.example.invalid/"
+origin_group = "survey-origin"
+rights_record_id = "synthetic-rights"
