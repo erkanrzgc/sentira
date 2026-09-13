@@ -189,15 +189,15 @@ offline subset listed in CONTINUATION is tested in this repository:
 
 ## Outside the current stage
 
-### Proposed next offline increment
+### Implemented offline briefing increment
 
 The user approved a shared evidence-and-briefing direction for three domains:
 elections, government policy and regional conflict. The detailed
-[scenario design](SCENARIO_DESIGN.md) is ready for review, with a
+[scenario design](SCENARIO_DESIGN.md) was approved, with a
 [synthetic format sample](SCENARIO_SAMPLE.md).
 
-The proposed first slice is file-backed configuration, a synthetic evidence ledger
-and a deterministic Markdown briefing. It adds no source collector or model.
+The implemented first slice provides file-backed configuration, a synthetic evidence
+ledger and a deterministic Markdown briefing. It adds no source collector or model.
 Validation concerns provenance, temporal cutoff, contradiction visibility and
 reproducibility, not forecasting accuracy. This is a separate product track; the
 existing Phase 1 and T1 protocol remain specific to aggregate discourse growth.

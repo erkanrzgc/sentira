@@ -1,7 +1,8 @@
 # Three-domain scenario analysis
 
-Status: product direction approved on 2026-09-13; detailed design prepared for
-review. This is a design increment, not an implemented forecasting capability.
+Status: detailed design and sample approved for implementation on 2026-09-13.
+The offline briefing implements a limited synthetic slice of this design, not a
+validated forecasting capability. See CONTINUATION for the implemented subset.
 
 ## Purpose and first user
 
@@ -157,7 +158,7 @@ examples. The existing surge-count threshold is not transferred to these domains
 Implement a synthetic evidence ledger, validated file configuration and a
 deterministic Markdown renderer before a source collector or local model.
 
-| Acceptance criterion | Planned test |
+| Acceptance criterion | Implemented test in `tests/briefing/test_pipeline.py` |
 |---|---|
 | All three domains render through the same pipeline | `test_three_domains_share_briefing_pipeline` |
 | Configuration is loaded from files; unknown fields/references fail | `test_invalid_briefing_config_rejected` |
@@ -169,8 +170,8 @@ deterministic Markdown renderer before a source collector or local model.
 | Synthetic output is unmistakably labelled and contains no probabilities | `test_synthetic_briefing_has_no_forecast_probability` |
 | No network or hosted inference is invoked | `test_briefing_runs_offline` |
 
-These are future software checks, not measured results. Qualitative utility is
-then assessed by the operator: can each conclusion be traced, can changes be
+These software checks are implemented; measured results are recorded in
+CONTINUATION. Qualitative utility is subsequently assessed by the operator: can each conclusion be traced, can changes be
 identified, and does the briefing reduce review effort? Record shortcomings as
 well as useful observations. Do not assign an invented success percentage.
 

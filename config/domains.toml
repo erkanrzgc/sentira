@@ -1,0 +1,11 @@
+[[domains]]
+id = "elections"
+label = "Elections"
+
+[[domains]]
+id = "government_policy"
+label = "Government policy"
+
+[[domains]]
+id = "regional_conflict"
+label = "Regional conflict"

@@ -20,7 +20,7 @@ and how that tone moves over time.
 
 The approved product direction now also includes an experimental institutional
 scenario track for elections, government policy and regional conflict. See
-[SCENARIO_DESIGN](SCENARIO_DESIGN.md) for the detailed proposal. It complements
+[SCENARIO_DESIGN](SCENARIO_DESIGN.md) for the approved design and implemented synthetic slice. It complements
 aggregate discourse measurement rather than treating it as a proxy for election
 outcomes or conflict risk. No new forecasting capability is claimed, and all
 person-level and source-use exclusions below continue to apply.
