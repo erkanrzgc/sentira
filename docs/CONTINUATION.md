@@ -168,3 +168,12 @@ evidence was inserted into the synthetic ledger. Automated source access, retent
 and redistribution remain unqualified. A primary-law search failed with a tool
 connection error; no legal conclusion was inferred. The next operator action is
 to review these drafts while access and lifecycle qualification proceeds.
+
+## Adversarial check, 2026-09-14
+
+See [ADVERSARIAL_REVIEW](ADVERSARIAL_REVIEW.md). Four new synthetic checks
+initially returned three passes and one failure: a visible correction does not
+withhold a scenario using the earlier claim. The failing expectation remains a
+strict expected failure, not a resolved guarantee. Full suite: 150 passed and
+one expected failure; targeted Ruff checks passed. No production code changed.
+Revision-aware scenario review is now the immediate correctness task.
