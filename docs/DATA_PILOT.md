@@ -125,7 +125,10 @@ persistent failure and an uncontaminated evaluation set exist.
 - Source roles and qualification questions: prepared.
 - Source-specific documentation review: recorded privately, including access gaps.
 - Evaluation worksheet and rubric: prepared, not populated with 18 real cases.
-- Real evidence packets, human reference answers and scored results: not produced.
+- Three private source-grounded development reading drafts: prepared on 2026-09-14,
+  with short original summaries and links; no human review completed.
+- Qualified retained evidence packets, human reference answers and scored results:
+  not produced. Date-only observation notes are not eligible for scored replay.
 - Live collection, model download and training: not started.
 
 The next deliverable is a qualified source record and one eligible evidence packet

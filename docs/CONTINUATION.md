@@ -138,7 +138,10 @@ The operator accepted the fictional report and subsequently prioritised data and
 manual evaluation over model selection. The local analyst design is deferred.
 See [DATA_PILOT](DATA_PILOT.md) for source qualification, the proposed 18-case
 worksheet and review rubric. Concrete source research remains outside the repository.
-No real case has yet been populated or human-reviewed. Numerical forecasting and
+Three source-grounded development reading drafts were prepared privately on
+2026-09-14. They contain original short summaries and source links, not retained
+source packets. They remain unreviewed by a human and ineligible for scored replay:
+observation precision is date-only and source-use qualification remains unresolved. Numerical forecasting and
 a downloaded local model remain separate later work.
 The existing production-readiness work remains necessary:
 
@@ -155,3 +158,13 @@ The existing production-readiness work remains necessary:
 The existing forecasting research remains useful, but survivor-only reconstruction
 must not be promoted to confirmatory evidence. No accuracy figure or live quota
 measurement was produced by this offline increment.
+
+## Latest data-first progress, 2026-09-14
+
+The first reading drafts distinguish timetable adoption from outcomes, legislative
+adoption from publication, and a diplomatic announcement from an agreement. They
+are assistant-authored development material, not human ground truth. No real
+evidence was inserted into the synthetic ledger. Automated source access, retention
+and redistribution remain unqualified. A primary-law search failed with a tool
+connection error; no legal conclusion was inferred. The next operator action is
+to review these drafts while access and lifecycle qualification proceeds.
