@@ -248,7 +248,8 @@ def test_revision_is_append_only(config, records):
         ledger.ingest(config, (*records, Evidence.from_mapping(row)))
         output = render_briefing(config, ledger.view(config, T), issued_at=T)
         assert "Revision of: e1" in output
-        assert "Support: e1" in output
+        assert "Support: e1" not in output
+        assert "Review required" in output
 
 
 def test_repetition_cannot_self_certify_corroboration(config, records):

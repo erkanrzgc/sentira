@@ -177,3 +177,18 @@ withhold a scenario using the earlier claim. The failing expectation remains a
 strict expected failure, not a resolved guarantee. Full suite: 150 passed and
 one expected failure; targeted Ruff checks passed. No production code changed.
 Revision-aware scenario review is now the immediate correctness task.
+
+
+## Revision eligibility fix, 2026-09-17
+
+The previously recorded expected failure is resolved. Storage supplies cutoff-bound
+review identifiers for revised evidence and dependent support, including when a
+correction has expired. The renderer withholds affected scenario prose and does
+not silently replace frozen references. Historical reports remain unchanged;
+unaffected scenarios still render. See
+[revision design](superpowers/specs/2026-09-17-revision-review.md) for limits.
+
+Measured: 158 tests passed; no expected failures; combined coverage 93.38%; Ruff
+lint and format passed. Independent review found no material gating defect;
+additional prose and transitive-dependency regressions passed. No live ingestion,
+model or source-use permission was added. Real lifecycle controls remain separate.

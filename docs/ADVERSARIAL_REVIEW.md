@@ -1,5 +1,9 @@
 # Adversarial briefing review
 
+Update 2026-09-17: the revision-gating defect below is fixed. The original
+results are retained as historical evidence; the expected-failure marker has
+been removed. See the resolution section below.
+
 Measured on 2026-09-14 against the deterministic synthetic briefing pipeline.
 These checks exercise explicit fixture metadata, not automatic understanding of
 real-world contradictions or forecasting accuracy.
@@ -43,3 +47,22 @@ Fix revision-aware scenario eligibility before treating current briefings as
 reliable under corrections. Then rerun the failing regression without its expected
 failure marker, together with historical invariance and expiry cases. Model
 selection and training remain deferred.
+
+
+## Resolution, 2026-09-17
+
+Observed revisions now exclude previous evidence and its support dependants from
+eligible scenario support. References to revised counterevidence also require
+review. Affected scenario titles, summaries, unknowns and triggers are withheld;
+source records that remain visible retain their audit trail. Unaffected scenarios
+continue to render. A new question version can explicitly use revised evidence.
+
+Expiry of correction content does not revive earlier support, including after
+reopening storage and through expired intermediate dependencies. Future revisions
+remain excluded from past views. These are synthetic visibility rules, not a
+production retention or deletion guarantee.
+
+Measured final result: 158 tests passed, no expected failures; combined statement
+and branch coverage 93.38%. Ruff lint and format checks passed. Independent review
+found no material gating defect and suggested a prose-boundary regression and
+additional dependency checks; those checks were added and passed in the final run.
