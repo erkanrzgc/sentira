@@ -23,7 +23,9 @@ def render_briefing(config, view, *, issued_at):
     eligible = {
         key: row
         for key, row in rows.items()
-        if row.published_at >= fresh_after and row.evidence_status != "insufficient"
+        if row.published_at >= fresh_after
+        and row.evidence_status != "insufficient"
+        and key not in view.review_required_ids
     }
     lines = [
         "# SYNTHETIC scenario briefing",
@@ -68,6 +70,8 @@ def render_briefing(config, view, *, issued_at):
                 status = "attributed"
             if counter:
                 status = "contested"
+            if row.evidence_id in view.review_required_ids:
+                status = "review_required"
             stale = "; stale" if row.published_at < fresh_after else ""
             url = quote(row.source_url, safe=":/%-._~")
             lines.extend(
@@ -110,6 +114,11 @@ def render_briefing(config, view, *, issued_at):
             if view.cutoff >= question.review_at:
                 lines.append("Review due; no automatic outcome resolution has been performed.")
             for scenario in question.scenarios:
+                affected = sorted(
+                    view.review_required_ids.intersection(
+                        (*scenario.support_ids, *scenario.contradiction_ids)
+                    )
+                )
                 support = [key for key in scenario.support_ids if key in eligible]
                 counter = [key for key in scenario.contradiction_ids if key in eligible]
                 gaps = [
@@ -118,7 +127,13 @@ def render_briefing(config, view, *, issued_at):
                     if key not in eligible
                 ]
                 lines.append("")
-                if len(support) != len(scenario.support_ids):
+                if affected:
+                    lines.append(
+                        f"Review required for registered draft {scenario.id}: "
+                        f"revised evidence or dependent support {', '.join(affected)}; "
+                        "substantive scenario text withheld."
+                    )
+                elif len(support) != len(scenario.support_ids):
                     lines.append(
                         f"Insufficient evidence for registered draft {scenario.id}; "
                         "substantive scenario text withheld."
@@ -135,6 +150,8 @@ def render_briefing(config, view, *, issued_at):
                 )
                 if gaps:
                     lines.append(f"Evidence gap: {', '.join(gaps)} unavailable or stale.")
+                if affected:
+                    continue
                 for unknown in scenario.unknowns:
                     lines.append(f"Unknown: {safe(unknown)}")
                 lines.extend(

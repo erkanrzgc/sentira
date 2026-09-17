@@ -73,9 +73,135 @@ def test_later_correction_preserves_earlier_report():
     assert "Revision of: e1" in current
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Known gap: visible revisions do not gate old scenario support"
-)
 def test_corrected_support_requires_scenario_review():
     _, _, current = corrected_reports()
     assert "#### The timetable proceeds without a substantive date change" not in current
+    assert "Review required" in current
+    assert "Support: e1" not in current
+    assert "Strengthen: Publication of the final timetable" not in current
+    assert "#### The proposal advances to a formal vote" in current
+
+
+@pytest.mark.parametrize("expired", [False, True])
+def test_revision_chain_and_expiry_do_not_restore_old_support(expired):
+    config, records = inputs()
+    now = T
+    with EvidenceLedger(":memory:", clock=lambda: now) as ledger:
+        ledger.ingest(config, records)
+        now += timedelta(minutes=1)
+        correction = replace(
+            records[0],
+            evidence_id="e2",
+            revision_of="e1",
+            published_at=now,
+            expires_at=now + timedelta(minutes=2),
+        )
+        ledger.ingest(config, (correction,))
+        now += timedelta(minutes=1)
+        latest = replace(
+            correction,
+            evidence_id="e3",
+            revision_of="e2",
+            published_at=now,
+            expires_at=now + timedelta(minutes=2),
+        )
+        ledger.ingest(config, (latest,))
+        if expired:
+            now += timedelta(minutes=3)
+        view = ledger.view(config, now)
+        output = render_briefing(config, view, issued_at=now)
+        assert "Review required" in output
+        assert "#### The timetable proceeds" not in output
+        assert "e1" in view.review_required_ids
+        if expired:
+            assert "**e2**" not in output and "**e3**" not in output
+
+
+def test_revision_of_counterevidence_requires_review():
+    config, records = inputs()
+    correction = replace(records[4], evidence_id="c4", revision_of="c2")
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, correction))
+        output = render_briefing(config, ledger.view(config, T), issued_at=T)
+    section = output.split("### Will the fictional institutional", 1)[1]
+    assert "Review required" in section
+    assert "#### A joint meeting" not in section
+
+
+def test_revision_blocks_indirect_support():
+    config, records = inputs()
+    question = config.questions[0]
+    scenario = replace(question.scenarios[0], support_ids=("dependent",))
+    config = replace(
+        config, questions=(replace(question, scenarios=(scenario,)), *config.questions[1:])
+    )
+    dependent = replace(records[0], evidence_id="dependent", support_ids=("e1",))
+    correction = replace(records[0], evidence_id="e2", revision_of="e1")
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, dependent, correction))
+        output = render_briefing(config, ledger.view(config, T), issued_at=T)
+    assert "#### The timetable proceeds" not in output
+    assert "Review required" in output
+
+
+def test_reviewed_new_question_can_use_revision_explicitly():
+    config, records = inputs()
+    correction = replace(records[0], evidence_id="e2", revision_of="e1")
+    question = config.questions[0]
+    scenario = replace(question.scenarios[0], support_ids=("e2",), title="Reviewed alternative")
+    revised = replace(
+        config,
+        questions=(
+            replace(question, id="reviewed-v2", scenarios=(scenario,)),
+            *config.questions[1:],
+        ),
+    )
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, correction))
+        ledger.ingest(revised, ())
+        output = render_briefing(revised, ledger.view(revised, T), issued_at=T)
+    assert "#### Reviewed alternative" in output
+
+
+def test_expired_correction_review_survives_reopen(tmp_path):
+    config, records = inputs()
+    correction = replace(
+        records[0],
+        evidence_id="e2",
+        revision_of="e1",
+        expires_at=T + timedelta(seconds=1),
+        claim="Expired correction text",
+    )
+    path = tmp_path / "evidence.db"
+    with EvidenceLedger(path, clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, correction))
+    with EvidenceLedger(path) as ledger:
+        cutoff = T + timedelta(seconds=1)
+        view = ledger.view(config, cutoff)
+        output = render_briefing(config, view, issued_at=cutoff)
+    assert "e1" in view.review_required_ids
+    assert "Review required" in output
+    assert "Expired correction text" not in output
+    assert "#### The timetable proceeds" not in output
+
+
+def test_review_propagates_through_expired_intermediate_support():
+    config, records = inputs()
+    question = config.questions[0]
+    scenario = replace(question.scenarios[0], support_ids=("last",))
+    config = replace(
+        config, questions=(replace(question, scenarios=(scenario,)), *config.questions[1:])
+    )
+    middle = replace(
+        records[0], evidence_id="middle", support_ids=("e1",), expires_at=T + timedelta(seconds=1)
+    )
+    last = replace(records[0], evidence_id="last", support_ids=("middle",))
+    correction = replace(records[0], evidence_id="e2", revision_of="e1")
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, middle, last, correction))
+        cutoff = T + timedelta(seconds=1)
+        view = ledger.view(config, cutoff)
+        output = render_briefing(config, view, issued_at=cutoff)
+    assert {"e1", "middle", "last"} <= view.review_required_ids
+    assert "**middle**" not in output
+    assert "#### The timetable proceeds" not in output

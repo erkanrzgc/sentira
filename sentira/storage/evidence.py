@@ -51,6 +51,17 @@ class EvidenceView:
     config_digest: str
     cutoff: datetime
     records: tuple[ObservedEvidence, ...]
+    review_required_ids: frozenset[str] = frozenset()
+
+
+def revision_review_ids(records):
+    """Keep observed corrections effective even after their synthetic text expires."""
+    affected = {row.revision_of for row in records if row.revision_of is not None}
+    while True:
+        dependants = {row.evidence_id for row in records if affected.intersection(row.support_ids)}
+        if dependants <= affected:
+            return frozenset(affected)
+        affected.update(dependants)
 
 
 def matches_source(row, sources):
@@ -209,19 +220,23 @@ class EvidenceLedger:
                 raise ValueError("Configuration was not observed by the cutoff")
             rows = self._db.execute(
                 "SELECT payload, observed FROM evidence "
-                "WHERE observed<=? AND published<=? AND expires>? ORDER BY id",
-                (at, at, at),
+                "WHERE observed<=? AND published<=? ORDER BY id",
+                (at, at),
             ).fetchall()
             sources = {s.id: s for s in config.sources}
             visible = []
+            registered = []
             for payload, observed in rows:
                 row = decode(payload)
                 if matches_source(row, sources):
-                    visible.append(ObservedEvidence(row, datetime.fromisoformat(observed)))
+                    registered.append(row)
+                    if row.expires_at > utc(cutoff):
+                        visible.append(ObservedEvidence(row, datetime.fromisoformat(observed)))
             result = EvidenceView(
                 config.digest,
                 utc(cutoff),
                 tuple(visible),
+                revision_review_ids(registered),
             )
             self._db.execute("COMMIT")
             return result
