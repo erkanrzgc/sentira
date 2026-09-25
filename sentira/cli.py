@@ -8,9 +8,11 @@ from datetime import datetime
 from pathlib import Path
 
 from sentira.config.briefing import load_config
+from sentira.config.cases import load_cases
 from sentira.core.document import utc
 from sentira.core.evidence import load_evidence
 from sentira.report.briefing import render_briefing
+from sentira.report.cases import render_cases
 from sentira.storage.evidence import EvidenceLedger
 
 
@@ -41,7 +43,13 @@ def main(argv=None):
     for option in ("config", "evidence", "observed-at", "cutoff", "issued-at", "output"):
         briefing.add_argument(f"--{option}", required=True)
     briefing.add_argument("--overwrite", action="store_true")
+    cases = commands.add_parser("case-report", help="Render fictional procedural evidence")
+    for option in ("input", "cutoff", "issued-at", "output"):
+        cases.add_argument(f"--{option}", required=True)
+    cases.add_argument("--overwrite", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "case-report":
+        return case_report(args)
     try:
         directory, evidence_path = Path(args.config).resolve(), Path(args.evidence).resolve()
         output = Path(args.output).resolve()
@@ -70,6 +78,29 @@ def main(argv=None):
         )
         return 1
     print("Synthetic briefing written.")
+    return 0
+
+
+def case_report(args):
+    try:
+        source, output = Path(args.input).resolve(), Path(args.output).resolve()
+        if source == output or output.suffix != ".md":
+            raise ValueError("Output must be a separate Markdown file")
+        snapshot = load_cases(source)
+        content = render_cases(
+            snapshot,
+            cutoff=utc(datetime.fromisoformat(args.cutoff)),
+            issued_at=utc(datetime.fromisoformat(args.issued_at)),
+        )
+        write_report(output, content, overwrite=args.overwrite)
+    except (ValueError, OSError):
+        print(
+            "Case report failed: check input contracts, timestamps and output destination. "
+            "Existing output requires --overwrite.",
+            file=sys.stderr,
+        )
+        return 1
+    print("Synthetic case report written.")
     return 0
 
 
