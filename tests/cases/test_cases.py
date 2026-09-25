@@ -242,3 +242,136 @@ def test_shipped_case_fixture_loads():
 
     loaded = load_cases(Path("examples/synthetic-cases.toml"))
     assert len(loaded.cases) == 2
+
+
+def test_calendar_month_wording_is_preserved_without_day_conversion():
+    values = data()
+    values["events"] = [
+        event(
+            kind="display_notice",
+            display_start=date(2030, 1, 31),
+            summary="Display is announced for one calendar month.",
+        )
+    ]
+    output = report(values, datetime(2030, 5, 1, tzinfo=UTC))
+    assert "one calendar month" in output
+    assert "Stated duration:" not in output
+    assert "display closure: no evidence in this snapshot" in output
+
+
+def test_observation_at_cutoff_is_visible_but_one_microsecond_later_is_not():
+    values = data()
+    boundary = datetime(2030, 1, 2, tzinfo=UTC)
+    values["events"].append(
+        event(id="after", observed_at=boundary.replace(microsecond=1), summary="Later content")
+    )
+    output = report(values, boundary)
+    assert "A fictional acceptance" in output
+    assert "Later content" not in output
+
+
+def test_equivalent_timezone_observations_produce_identical_output():
+    values = data()
+    expected = report(values)
+    values["events"][0]["observed_at"] = datetime.fromisoformat("2030-01-02T03:00:00+03:00")
+    assert report(values) == expected
+
+
+def test_notice_can_announce_a_future_display_without_implying_completion():
+    values = data()
+    values["events"] = [
+        event(
+            kind="display_notice",
+            event_date=date(2030, 4, 1),
+            display_start=date(2030, 4, 1),
+            duration_days=20,
+        )
+    ]
+    output = report(values)
+    assert "Stated display start: 2030-04-01" in output
+    assert "display closure: no evidence in this snapshot" in output
+
+
+def test_transitive_supersession_keeps_all_records_and_old_cutoff():
+    values = data()
+    old_report = report(values, datetime(2030, 1, 2, tzinfo=UTC))
+    values["events"].extend(
+        [
+            event(
+                id="revision-a",
+                kind="amendment",
+                supersedes="event-a",
+                observed_at=datetime(2030, 1, 3, tzinfo=UTC),
+            ),
+            event(
+                id="revision-b",
+                kind="amendment",
+                supersedes="revision-a",
+                observed_at=datetime(2030, 1, 4, tzinfo=UTC),
+            ),
+        ]
+    )
+    assert report(values, datetime(2030, 1, 2, tzinfo=UTC)) == old_report
+    output = report(values)
+    assert "#### event-a (SUPERSEDED" in output
+    assert "#### revision-a (SUPERSEDED" in output
+    assert "#### revision-b\n" in output
+    assert output.count("REVIEW REQUIRED") == 1
+
+
+def test_competing_revisions_are_retained_without_choosing_a_winner():
+    values = data()
+    values["events"].extend(
+        [
+            event(
+                id="revision-a",
+                kind="amendment",
+                supersedes="event-a",
+                summary="Competing account A",
+            ),
+            event(
+                id="revision-b",
+                kind="cancellation",
+                supersedes="event-a",
+                summary="Competing account B",
+            ),
+        ]
+    )
+    output = report(values)
+    assert "Competing account A" in output and "Competing account B" in output
+    assert "REVIEW REQUIRED" in output
+    assert "no replacement status inferred" in output
+
+
+def test_empty_event_snapshot_does_not_invent_an_outcome():
+    values = data()
+    values["events"] = []
+    output = report(values)
+    assert output.count("acceptance: no evidence in this snapshot") == 2
+    assert output.count("objection outcome: no evidence in this snapshot") == 2
+    assert "REVIEW REQUIRED" not in output
+
+
+@pytest.mark.parametrize("field", ["sources", "cases", "events", "labels"])
+def test_invalid_top_level_collections_rejected(field):
+    values = data()
+    values[field] = 42
+    with pytest.raises(ValueError):
+        snapshot(values)
+
+
+def test_future_publication_is_not_accepted_as_already_observed():
+    values = data()
+    values["events"][0]["published_date"] = date(2030, 1, 3)
+    with pytest.raises(ValueError):
+        snapshot(values)
+
+
+def test_publication_date_is_separate_from_event_date():
+    values = data()
+    values["events"][0]["event_date"] = date(2029, 12, 1)
+    values["events"][0]["published_date"] = date(2030, 1, 1)
+    output = report(values)
+    assert "event date: 2029-12-01" in output
+    assert "Published date: 2030-01-01" in output
+    assert "Observed: 2030-01-02" in output
