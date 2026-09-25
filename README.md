@@ -26,6 +26,21 @@ and [fictional sample](docs/SCENARIO_SAMPLE.md) define the approved direction.
 The offline briefing is implemented; its qualitative usefulness and forecasting
 value have not been validated by the discourse-growth protocol.
 
+**Offline procedural case pilot:** a separate `case-report` command lists
+synthetic case evidence by observation cutoff, with source/page references,
+explicit gaps and supersession review flags. It infers no legal finality.
+See the [case register design](docs/superpowers/specs/2026-09-25-case-register-design.md).
+
+```powershell
+python -m sentira.cli case-report --input examples/synthetic-cases.toml --cutoff 2030-02-03T00:00:00Z --issued-at 2030-02-03T00:00:00Z --output out/cases.md
+```
+
+Existing output requires `--overwrite`. Cases, institutions, source references,
+events and reporting labels live in TOML. Only explicitly synthetic input and
+reserved source URLs are accepted; this is not a semantic personal-data filter.
+Observation timestamps are supplied per snapshot, not durably captured by a
+collector. There is no automated document reading, network access or model call.
+
 ---
 
 ## What the system produces

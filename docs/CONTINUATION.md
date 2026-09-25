@@ -192,3 +192,40 @@ Measured: 158 tests passed; no expected failures; combined coverage 93.38%; Ruff
 lint and format passed. Independent review found no material gating defect;
 additional prose and transitive-dependency regressions passed. No live ingestion,
 model or source-use permission was added. Real lifecycle controls remain separate.
+
+## Offline procedural case register, 2026-09-25
+
+The operator approved the bounded case-register design. A separate `case-report`
+command now renders original synthetic TOML fixtures with explicit case IDs,
+institutional decision references, source/page links, event dates and supplied
+UTC observation times. Location relations distinguish adjacent reference areas
+from affected footprints. Reporting labels and all case facts remain external.
+
+The sole cutoff selector excludes later observations. Missing closure and
+objection records remain gaps; elapsed display durations never resolve them.
+Visible supersession marks affected cases for review and retains the superseded
+record, without automatically declaring a replacement legal status. Unknown
+fields, invalid references and supersession cycles are rejected. The existing
+three-domain briefing command remains separate.
+
+Measured in the implementation checkout: 200 tests passed, including 42 new case
+checks; combined statement/branch coverage 93.46%; Ruff lint and format passed.
+Two CLI executions produced identical output (SHA-256
+`a1f9428a329c0ac440cba7c95902e9b948f19062dac640578b917ffd95c450c5`).
+Independent review found double-encoding of existing URL escapes. A failing
+regression reproduced it, the fix passed, and the reviewer confirmed resolution.
+
+See [design](superpowers/specs/2026-09-25-case-register-design.md),
+[implementation plan](superpowers/plans/2026-09-25-case-register.md) and
+[fixture](../examples/synthetic-cases.toml). Run the README example to inspect
+output. These are software checks, not semantic or forecasting accuracy.
+
+Limits: no model, OCR, network access, automatic stage extraction, persistent
+observation capture, immutable report issuance or real-data ingestion. The
+synthetic flag is an input contract, not a semantic privacy detector. Cases are
+operator-authored snapshots; changing supplied historical metadata changes the
+report. Production collection still requires source-use and lifecycle work.
+
+Next bounded work: operator review of the example report, then broaden manual
+cases beyond a single publisher and document format. Define human-reviewed
+reference labels and simple-rule baselines before evaluating local models.

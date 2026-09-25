@@ -1,0 +1,92 @@
+synthetic = true
+
+[labels]
+proposal = "proposal"
+referral = "referral"
+acceptance = "acceptance"
+display_notice = "display notice"
+display_closure = "display closure"
+objection = "objection"
+objection_outcome = "objection outcome"
+amendment = "amendment"
+cancellation = "cancellation"
+
+[[sources]]
+id = "district"
+label = "Fictional district archive"
+institution = "Fictional district council"
+origin_group = "district-origin"
+url = "https://district.invalid/"
+
+[[sources]]
+id = "regional"
+label = "Fictional regional archive"
+institution = "Fictional regional council"
+origin_group = "regional-origin"
+url = "https://regional.invalid/"
+
+[[cases]]
+id = "case-a"
+description = "Fictional electricity infrastructure proposal"
+location = "West of reference area A; the reference area is not the affected footprint"
+location_relation = "adjacent"
+
+[[cases]]
+id = "case-b"
+description = "Fictional electricity infrastructure proposal"
+location = "Fictional affected area B"
+location_relation = "affected"
+
+[[events]]
+id = "accept-a"
+case_id = "case-a"
+source_id = "district"
+kind = "acceptance"
+event_date = 2030-01-02
+observed_at = 2030-01-03T10:00:00Z
+url = "https://district.invalid/a.pdf"
+page = 2
+summary = "The district accepted the fictional proposal."
+review_method = "visual"
+decision_reference = "fictional-101"
+
+[[events]]
+id = "notice-a"
+case_id = "case-a"
+source_id = "district"
+kind = "display_notice"
+event_date = 2030-01-05
+observed_at = 2030-01-06T10:00:00Z
+url = "https://district.invalid/a.pdf"
+page = 1
+summary = "A display period is announced; closure and objections are not documented."
+review_method = "visual"
+display_start = 2030-01-05
+duration_days = 20
+
+[[events]]
+id = "accept-b"
+case_id = "case-b"
+source_id = "regional"
+kind = "acceptance"
+event_date = 2030-01-02
+observed_at = 2030-01-03T10:00:00Z
+url = "https://regional.invalid/b.pdf"
+page = 2
+summary = "The regional council accepted a separate fictional proposal."
+review_method = "text"
+decision_reference = "fictional-102"
+
+[[events]]
+id = "amend-b"
+case_id = "case-b"
+source_id = "regional"
+kind = "amendment"
+event_date = 2030-01-15
+observed_at = 2030-02-02T10:00:00Z
+url = "https://regional.invalid/b-amendment.pdf"
+page = 1
+summary = "A later observed record changes the earlier proposal; review is required."
+review_method = "visual"
+decision_reference = "fictional-103"
+supersedes = "accept-b"
