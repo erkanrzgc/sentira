@@ -229,3 +229,24 @@ report. Production collection still requires source-use and lifecycle work.
 Next bounded work: operator review of the example report, then broaden manual
 cases beyond a single publisher and document format. Define human-reviewed
 reference labels and simple-rule baselines before evaluating local models.
+
+## Adversarial case checks and review boundary, 2026-09-25
+
+Thirteen additional synthetic checks exercise the existing implementation:
+calendar-month wording without day conversion, exact cutoff inclusion and
+microsecond exclusion, equivalent timezone observations, future display notices,
+transitive and competing supersessions, empty evidence, malformed collections,
+and distinct publication/event dates. No runtime behaviour changed. These are
+regression guards for existing contracts, not fixes for reproduced failures.
+
+Measured: 213 tests passed; combined statement/branch coverage 94.25%; Ruff lint
+and format passed. The case subset contains 55 checks. Neither coverage nor
+passing synthetic tests establishes semantic accuracy on real documents.
+
+Private manual research now includes three planning cases and a twelve-question
+development worksheet with assistant-drafted references. No question has human
+reference approval, no model answers were collected and no score was computed.
+The operator is not expected to supply specialist document verification; their
+feedback concerns clarity and usefulness. Qualified source review and source-use
+decisions remain prerequisites for a real-data model evaluation. The worksheet
+must not be promoted to independent ground truth or a held-out test set.
