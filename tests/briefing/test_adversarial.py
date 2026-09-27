@@ -19,6 +19,42 @@ def inputs():
     return load_config(ROOT / "config"), load_evidence(ROOT / "examples/synthetic-evidence.toml")
 
 
+@pytest.mark.parametrize("reason", ["insufficient", "stale", "expired"])
+def test_unavailable_support_withholds_all_scenario_text(reason):
+    config, records = inputs()
+    scenario = replace(
+        config.questions[0].scenarios[0],
+        title="Unsupported title marker",
+        summary="Unsupported summary marker",
+        unknowns=("Unsupported unknown marker",),
+        strengthen="Unsupported strengthen marker",
+        weaken="Unsupported weaken marker",
+    )
+    config = replace(
+        config,
+        questions=(replace(config.questions[0], scenarios=(scenario,)), *config.questions[1:]),
+    )
+    cutoff = T
+    support = records[0]
+    if reason == "insufficient":
+        support = replace(support, evidence_status="insufficient")
+    elif reason == "stale":
+        support = replace(
+            support, published_at=T - timedelta(hours=config.reporting.freshness_hours, seconds=1)
+        )
+    else:
+        support = replace(support, expires_at=T + timedelta(seconds=1))
+        cutoff = support.expires_at
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (support, *records[1:]))
+        output = render_briefing(config, ledger.view(config, cutoff), issued_at=cutoff)
+    assert "Insufficient evidence for registered draft draft-proceeds" in output
+    assert "Evidence gap: e1 unavailable or stale." in output
+    assert "Unsupported" not in output
+    assert "#### The proposal advances to a formal vote" in output
+    assert "Strengthen: An official voting agenda" in output
+
+
 def test_explicit_counterevidence_survives_report():
     config, records = inputs()
     with EvidenceLedger(":memory:", clock=lambda: T) as ledger:

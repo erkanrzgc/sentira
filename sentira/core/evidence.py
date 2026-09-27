@@ -45,6 +45,7 @@ class Evidence:
             object.__setattr__(self, name, utc(getattr(self, name)))
         if self.expires_at <= self.published_at:
             raise ValueError("Expiry must follow publication")
+        text(self.evidence_status)
         if self.evidence_status not in {"attributed", "corroborated", "contested", "insufficient"}:
             raise ValueError("Invalid evidence status")
         if self.revision_of is not None:

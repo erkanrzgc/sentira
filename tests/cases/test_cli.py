@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import pytest
+
 from sentira.cli import main
 
 
@@ -61,3 +63,14 @@ def test_case_cli_rejects_bad_time(tmp_path):
     args = arguments(tmp_path / "report.md")
     args[args.index("--cutoff") + 1] = "2030-02-03"
     assert main(args) == 1
+
+
+@pytest.mark.parametrize("value", ["0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"])
+def test_case_cli_rejects_unrepresentable_utc_without_overwriting(tmp_path, capsys, value):
+    output = tmp_path / "report.md"
+    output.write_text("keep me", encoding="utf-8")
+    command = arguments(output)
+    command[command.index("--cutoff") + 1] = value
+    assert main([*command, "--overwrite"]) == 1
+    assert output.read_text(encoding="utf-8") == "keep me"
+    assert "Case report failed:" in capsys.readouterr().err

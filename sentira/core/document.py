@@ -29,7 +29,10 @@ def utc(value: datetime) -> datetime:
     """Reject ambiguous times; use one representation for ordering and equality."""
     if not isinstance(value, datetime) or value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("An aware datetime is required")
-    return value.astimezone(UTC)
+    try:
+        return value.astimezone(UTC)
+    except OverflowError:
+        raise ValueError("Datetime cannot be represented in UTC") from None
 
 
 def valid_slug(value: object) -> bool:

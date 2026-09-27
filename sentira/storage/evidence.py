@@ -89,22 +89,23 @@ def validate_references(config, records):
         if row.revision_of and records[row.revision_of].published_at > row.published_at:
             raise ValueError("Revision predates its original")
     # Contradictions can be mutual. Only support/revision dependencies must be acyclic.
-    visited, active = set(), set()
-
-    def visit(key):
-        if key in active:
-            raise ValueError("Cyclic evidence dependency")
-        if key in visited:
-            return
-        active.add(key)
-        row = records[key]
-        for ref in (*row.support_ids, *((row.revision_of,) if row.revision_of else ())):
-            visit(ref)
-        active.remove(key)
-        visited.add(key)
-
-    for key in records:
-        visit(key)
+    remaining, dependants = {}, {key: [] for key in records}
+    for key, row in records.items():
+        dependencies = (*row.support_ids, *((row.revision_of,) if row.revision_of else ()))
+        remaining[key] = len(dependencies)
+        for ref in dependencies:
+            dependants[ref].append(key)
+    ready = [key for key, count in remaining.items() if count == 0]
+    checked = 0
+    while ready:
+        key = ready.pop()
+        checked += 1
+        for dependant in dependants[key]:
+            remaining[dependant] -= 1
+            if remaining[dependant] == 0:
+                ready.append(dependant)
+    if checked != len(records):
+        raise ValueError("Cyclic evidence dependency")
     for question in config.questions:
         for scenario in question.scenarios:
             for ref in (*scenario.support_ids, *scenario.contradiction_ids):

@@ -250,3 +250,220 @@ The operator is not expected to supply specialist document verification; their
 feedback concerns clarity and usefulness. Qualified source review and source-use
 decisions remain prerequisites for a real-data model evaluation. The worksheet
 must not be promoted to independent ground truth or a held-out test set.
+
+## Source qualification, 2026-09-26
+
+Private documentation review identified a municipal open-data portal with a
+published attribution licence and documented anonymous location services.
+Dataset pages provide supporting geographic context, not planning decisions or
+evidence of future designation changes. No operational API call or dataset
+ingestion was performed, and no source-use acceptance was recorded.
+
+The publisher's terms and FAQ disagree about preservation of earlier dataset
+versions. Historical availability therefore remains unverified. Catalogue
+modification dates must not be treated as event dates or historical observations.
+Resource-specific conditions, request budgets and lifecycle handling remain open.
+
+Next: prioritise a documented decision or display-notice source that answers the
+procedural question directly. Supporting location feeds do not justify expanding
+the implementation scope. Runtime code and the previously recorded test results
+are unchanged; tests were not rerun for this documentation-only update.
+
+Manual browser research subsequently reached a direct municipal planning notice.
+The page distinguishes council decision, approval and display dates, and links
+to a drawing and report. Those linked contents and the original decision were
+not inspected in this increment. A published display-end date and a current
+not-on-display label do not establish objection outcomes or legal finality.
+
+The new private development case has no independent reference approval. Public
+interface access establishes neither a documented collector API nor reuse rights.
+The separate open-data portal licence does not automatically cover this source.
+Next: cross-check the linked report, preserving distinct procedural dates; any
+new schema representation of approval requires design and named tests first.
+
+## Linked report cross-check, 2026-09-26
+
+The linked private report was subsequently retrieved and relevant pages visually
+checked. Its subject and scales agree with the notice, but exact text searches
+did not independently match the notice's identifier and later procedural dates.
+This does not establish absence from images or differently formatted text.
+
+The report includes a residential proposal; its conservation title alone must
+not cause that evidence to be omitted. Separate sections give different area
+totals, and one percentage does not match ordinary rounding of the stated areas.
+The private record preserves both values, scope labels, page references and
+calculated checks without choosing an authoritative total. Construction conditions
+are stated but their fulfilment is unverified. No current entitlement is inferred.
+
+Next evidence target: original decision/approval material and subsequent changes
+or objection outcomes. No model score, independent label approval, collector or
+runtime change was added. Documentation whitespace checks passed; software tests
+were not rerun for these research notes.
+
+## Published decision cross-check, 2026-09-26
+
+The authority's published council decision and embedded committee text were
+read directly. Date, subject and locality match the private notice case; the
+decision heading uses a shorter reference rendering, retained alongside the
+notice's reference. The record distinguishes proposal, committee referral,
+committee consideration and council acceptance for onward transmission to a
+conservation authority. That acceptance does not establish the later authority's
+decision or fulfilment of construction conditions.
+
+An archive row reuses the short decision number in another year. Matching by
+number alone is therefore insufficient; date, issuing institution and subject
+must remain part of manual verification. Other cases' objection outcomes must
+not be attached to this case. Its later objection outcome remains unverified.
+
+Next: retrieve the intervening conservation decision and reconcile any conditions
+or revisions against the report. This is research evidence, not a new implemented
+matching guarantee. No runtime code or model evaluation changed.
+
+## Conservation archive leads, 2026-09-26
+
+Official agenda entries supplied a shared file reference and candidate decision
+dates/numbers for a matching locality and planning subject. They narrow the next
+retrieval target but do not establish exact case identity or the decisions'
+operative effect. No approval event was inferred from agenda inclusion or from
+a populated decision-number column. The operative texts remain unverified.
+
+A linked drawing transfer was interrupted; its partial rendering is explicitly
+excluded from evidence and evaluation. Private research records the bounded
+search coverage and retrieval failures. Next: retrieve the candidate decisions,
+then match their scope and conditions to the notice and report. Runtime code,
+source-use gates and independent evaluation status remain unchanged.
+
+The relevant monthly registration listings were subsequently inspected without
+finding the sought operative decisions. Their coverage is not established as
+exhaustive. A bounded drawing retry also timed out and remains excluded from
+evidence. Repeating the same search or transfer is not the next useful action.
+A private concise case brief now consolidates supported statements, numerical
+differences and unresolved status. Future work should use a different official
+publication route or a separately authorised document request for the missing
+decision texts. No external request was sent; no code or evaluation changed.
+
+## Prepared document request, 2026-09-26
+
+The authority's published contact page was retrieved. A private, unsent request
+now specifies the candidate file, decision references, releasable annexes and
+later replacement decisions, and asks for evidence of the case match. It contains
+no operator identity. A published email address does not establish the formal
+admissibility of an information request.
+
+The response checklist separates receipt time from document dates, checks the
+operative text and annex versions, and does not infer reuse permission from
+document access. Sending remains subject to explicit user authorisation. No
+external communication occurred. The private case synthesis is available now;
+missing decisions remain evidence gaps, not inferred approvals or rejections.
+
+## Fourth-case review worksheet, 2026-09-26
+
+The private planning worksheet now has an eight-question extension derived from
+the existing fourth-case research notes. It covers council versus later approval
+stages, agenda versus operative decision text, conflicting area values, percentage
+arithmetic, display closure versus finality, observation-time leakage, repeated
+origins and a useful answer that preserves both the residential proposal and gaps.
+External sources were not retrieved again while preparing this extension.
+
+Calculated inventory: twelve earlier questions plus eight new questions gives
+twenty questions across four development cases. These are not twenty independent
+cases and do not complete the separate three-domain pilot. Human-approved
+references remain absent; no model answers, scores or review durations exist.
+
+Questions, assistant-drafted answers and structured review fields are separate
+private files. Their manifest records local byte hashes, not source-use acceptance,
+an eligible evidence packet or a frozen scoring registration. The earlier packet
+was preserved and its recorded hashes checked. Partial drawings and missing
+operative decisions remain excluded. The extension is explicitly ineligible for
+training, scoring and historical replay; publication dates were not substituted
+for observation times.
+
+Next: source-qualified reference review and genuinely observed review effort,
+before selecting a model task. Document retrieval can proceed through a different
+official route or a separately authorised request. No external communication or
+runtime change was made in this increment.
+
+## Input failure handling and file protection, 2026-09-26
+
+Three reproduced defects were corrected within the existing offline contracts.
+List or table values in briefing domain/status fields previously raised an
+uncaught type error. These fields now validate their string contract before set
+membership. UTC conversions outside the representable calendar range now raise
+a validation error rather than an uncaught overflow. Both changes preserve the
+CLI's controlled failure path and existing output.
+
+The briefing command previously compared resolved output with unresolved
+configuration filenames. A configuration file linked to a Markdown destination
+could therefore be overwritten with a generated report. Each configuration input
+is now resolved before the output-alias check. This is protection for the supplied
+paths at validation time, not a guarantee against concurrent filesystem changes.
+
+| Named regression test | Verified contract |
+| --- | --- |
+| `tests/briefing/test_cli.py::test_cli_rejects_non_text_enums_without_exposing_input` | Six malformed enum inputs fail without echoing their values or replacing output |
+| `tests/briefing/test_cli.py::test_cli_never_overwrites_symlinked_configuration` | A linked configuration target cannot become the report destination |
+| `tests/core/test_document.py::test_utc_rejects_unrepresentable_conversion` | Both calendar boundaries produce a validation error |
+| `tests/cases/test_cli.py::test_case_cli_rejects_unrepresentable_utc_without_overwriting` | Invalid conversions leave the existing report intact |
+
+Measured: all eleven new parameter cases failed before their corresponding fixes;
+the full suite then passed 224 tests with 94.42% combined statement/branch coverage.
+The symbolic-link test ran without a skip on this host. Ruff lint and format
+checks passed for 58 files after formatting. Both CLI examples were generated
+twice in separate processes and produced identical bytes for identical inputs.
+
+An exploratory sweep applied 330 field/type mutations across the configuration,
+evidence and case loaders; none raised an unexpected exception type. This is a
+bounded exception-handling check, not an exhaustive input proof or semantic
+accuracy measurement. No source access, model run, real-data ingestion or external
+communication was introduced. Example output remains explicitly synthetic.
+
+## Complete suppression of unsupported scenario prose, 2026-09-27
+
+The renderer previously withheld the title and summary of a scenario with
+ineligible support but still printed its registered unknowns and strengthening
+or weakening triggers. This contradicted the report's statement that substantive
+scenario text was withheld and the insufficient-evidence rule in SCENARIO_DESIGN.
+The same support-eligibility gate now applies to those remaining prose fields.
+Question metadata, support and counterevidence references, and evidence gaps
+remain visible. This does not hide the underlying attributed evidence records.
+
+Named regression: `tests/briefing/test_adversarial.py::test_unavailable_support_withholds_all_scenario_text`.
+Its insufficient, stale and expired cases each failed before the fix and passed
+afterwards; each also checks that an unaffected scenario and its trigger survive.
+Measured: 227 tests passed, combined statement/branch coverage 94.42%, Ruff lint
+and format checks passed. A separate static review found no actionable issues;
+the reviewer did not independently rerun tests.
+
+Four local synthetic demonstrations exercise fresh, insufficient, stale and
+expired evidence using external configuration and evidence files. Their manifest
+records command arguments and file hashes for repetition. Calculated output counts:
+the fresh example has four scenario headings and eight trigger lines; each other
+example has zero of both while retaining insufficient-evidence and gap messages.
+These are rendering checks, not analytical accuracy or independent reference labels.
+
+## Order-independent validation of long dependencies, 2026-09-27
+
+A synthetic chain of 1,200 evidence records exposed order-dependent validation:
+the dependency-first ordering loaded, but the opposite ordering exceeded Python's
+recursive call limit. Long cyclic input also raised an uncaught recursion error
+instead of the specified validation error. Dependency validation now uses an
+iterative traversal of support and revision edges. Contradiction edges remain
+outside the acyclicity requirement; shared and duplicate-role edges remain valid.
+
+Named checks in `tests/briefing/test_pipeline.py`:
+
+- `test_long_dependency_chain_is_independent_of_input_order`: support, revision
+  and mixed chains in both orders load all records.
+- `test_long_cycle_rejection_preserves_ledger_and_clock`: rejected cycles leave
+  earlier report bytes, visible records and the storage clock unchanged; a later
+  valid write remains possible.
+- `test_shared_support_and_revision_target_are_not_a_cycle`: converging support
+  and a reference serving both support and revision roles do not produce a false
+  cycle finding.
+
+Measured: the initial long-chain checks produced six failures and three passes
+before the fix. The completed suite passed 237 tests with 94.45% combined
+statement/branch coverage; Ruff lint and format passed for 58 files. A separate
+static review found no actionable issues and did not independently rerun tests.
+This is a bounded synthetic robustness check, not a production throughput result.
+The correction-review propagation algorithm and database format are unchanged.
