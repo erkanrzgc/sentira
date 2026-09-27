@@ -56,7 +56,7 @@ def main(argv=None):
         inputs = {
             evidence_path,
             *(
-                directory / f"{name}.toml"
+                (directory / f"{name}.toml").resolve()
                 for name in ("domains", "sources", "questions", "reporting")
             ),
         }

@@ -4,7 +4,13 @@ from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
-from sentira.core.document import Document, DocumentKind, FieldClass, Provenance
+from sentira.core.document import Document, DocumentKind, FieldClass, Provenance, utc
+
+
+@pytest.mark.parametrize("value", ["0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"])
+def test_utc_rejects_unrepresentable_conversion(value):
+    with pytest.raises(ValueError, match="UTC"):
+        utc(datetime.fromisoformat(value))
 
 
 def test_document_has_no_raw_identifier_or_counter_field():

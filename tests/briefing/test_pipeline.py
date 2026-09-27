@@ -2,6 +2,7 @@
 
 import copy
 import tomllib
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -328,3 +329,59 @@ def test_support_must_cover_every_domain_of_parent_claim(config, records):
     with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
         with pytest.raises(ValueError, match="cross-domain"):
             ledger.ingest(config, (Evidence.from_mapping(row), *records[1:]))
+
+
+def dependency_chain(template, kind, *, cyclic=False):
+    rows = []
+    for index in range(1200):
+        target = f"chain-{index + 1}" if index < 1199 else "chain-0" if cyclic else None
+        revision = kind == "revision" or (kind == "mixed" and index % 2 == 0)
+        rows.append(
+            replace(
+                template,
+                evidence_id=f"chain-{index}",
+                support_ids=(target,) if target and not revision else (),
+                revision_of=target if revision else None,
+            )
+        )
+    return tuple(rows)
+
+
+@pytest.mark.parametrize("kind", ["support", "revision", "mixed"])
+@pytest.mark.parametrize("reverse", [False, True])
+def test_long_dependency_chain_is_independent_of_input_order(config, records, kind, reverse):
+    chain = dependency_chain(records[0], kind)
+    if reverse:
+        chain = tuple(reversed(chain))
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (*records, *chain))
+        assert len(ledger.view(config, T).records) == len(records) + len(chain)
+
+
+@pytest.mark.parametrize("kind", ["support", "revision", "mixed"])
+def test_long_cycle_rejection_preserves_ledger_and_clock(config, records, kind):
+    now = T
+    with EvidenceLedger(":memory:", clock=lambda: now) as ledger:
+        ledger.ingest(config, records)
+        before = render_briefing(config, ledger.view(config, T), issued_at=T)
+        now += timedelta(seconds=1)
+        with pytest.raises(ValueError, match="Cyclic"):
+            ledger.ingest(config, dependency_chain(records[0], kind, cyclic=True))
+        assert render_briefing(config, ledger.view(config, T), issued_at=T) == before
+        assert len(ledger.view(config, now).records) == len(records)
+        now = T
+        ledger.ingest(config, (replace(records[0], evidence_id="after-rejected-cycle"),))
+        assert len(ledger.view(config, T).records) == len(records) + 1
+
+
+def test_shared_support_and_revision_target_are_not_a_cycle(config, records):
+    left = replace(records[0], evidence_id="left", support_ids=("e1",))
+    right = replace(records[0], evidence_id="right", support_ids=("e1",))
+    joint = replace(
+        records[0], evidence_id="joint", support_ids=("left", "right"), revision_of="left"
+    )
+    with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
+        ledger.ingest(config, (joint, right, left, *records))
+        view = ledger.view(config, T)
+        assert {row.evidence.evidence_id for row in view.records} >= {"joint", "left", "right"}
+        assert {"joint", "left"} <= view.review_required_ids

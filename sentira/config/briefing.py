@@ -15,6 +15,7 @@ class Domain:
     label: str
 
     def __post_init__(self):
+        slug(self.id)
         if self.id not in DOMAIN_IDS:
             raise ValueError("Unsupported domain")
         text(self.label)
@@ -73,6 +74,7 @@ class Question:
     def __post_init__(self):
         slug(self.id)
         slug(self.resolution_source_id)
+        slug(self.domain_id)
         if self.domain_id not in DOMAIN_IDS:
             raise ValueError("Unsupported question domain")
         for value in (self.prompt, self.outcome_rule, self.invalidation_rule):

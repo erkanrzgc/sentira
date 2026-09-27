@@ -150,7 +150,7 @@ def render_briefing(config, view, *, issued_at):
                 )
                 if gaps:
                     lines.append(f"Evidence gap: {', '.join(gaps)} unavailable or stale.")
-                if affected:
+                if affected or len(support) != len(scenario.support_ids):
                     continue
                 for unknown in scenario.unknowns:
                     lines.append(f"Unknown: {safe(unknown)}")
