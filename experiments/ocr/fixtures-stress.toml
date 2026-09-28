@@ -1,0 +1,51 @@
+synthetic = true
+seed = 27092026
+title = "SYNTHETIC DEVELOPMENT DOCUMENT"
+footer = "Fictional fields only. No legal effect or real case."
+dpi = 72
+font_size = 10
+timeout = 30
+psm = 6
+oem = 1
+
+[labels]
+decision = "Decision"
+date = "Date"
+scale = "Scale"
+duration = "Duration"
+
+[[families]]
+id = "fixture-a"
+institution = "Fictional Planning Board Alpha"
+[families.fields]
+decision = "004.018/0081"
+date = "2030-02-08"
+scale = "1/1000"
+duration = "30 days"
+
+[[families]]
+id = "fixture-b"
+institution = "Fictional Planning Board Beta"
+[families.fields]
+decision = "004.018/0087"
+date = "2030-02-18"
+scale = "1/5000"
+duration = "one calendar month"
+
+[[families]]
+id = "fixture-c"
+institution = "Fictional Planning Board Gamma"
+[families.fields]
+decision = "014.081/0018"
+date = "2030-08-02"
+scale = "1/1000"
+duration = "30 days"
+
+[[families]]
+id = "fixture-d"
+institution = "Fictional Planning Board Delta"
+[families.fields]
+decision = "014.081/0081"
+date = "2030-08-12"
+scale = "1/5000"
+duration = "one calendar month"

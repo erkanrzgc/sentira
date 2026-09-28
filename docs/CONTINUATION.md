@@ -467,3 +467,122 @@ statement/branch coverage; Ruff lint and format passed for 58 files. A separate
 static review found no actionable issues and did not independently rerun tests.
 This is a bounded synthetic robustness check, not a production throughput result.
 The correction-review propagation algorithm and database format are unchanged.
+
+## Source-level development review, 2026-09-27
+
+Eight fourth-case questions were checked against published decision text, a
+notice, two agenda PDFs and the existing local report. Initial research-tool
+failures were preserved separately from successful browser and bounded document
+retrieval. Relevant agenda rows were visually inspected. The local report was
+not downloaded again; unchanged local bytes do not establish current remote
+version identity. Earlier date-only observations were not rewritten.
+
+The review clarified a temporal interpretation: a report's earlier statement
+that no approved plan existed does not by itself contradict a later approval
+notice. Operative decision texts, exact case linkage and approved-version identity
+remain unresolved. A display-status label from an earlier review was not treated
+as freshly verified when the retrieved detail page showed only dates.
+
+Tool-clock observations bounded the source pass; the calculated elapsed interval
+was 114 seconds, including assistant reading, tool latency and retrieval recovery,
+excluding later note writing. Human review time, operator usefulness and time
+savings remain unmeasured. One assisted pass does not establish a recurring
+bottleneck or justify model training. The private structured audit preserves
+pending human review and ineligibility for scoring and training. No external
+communication or runtime change occurred; software tests were not rerun for this
+research-only update.
+
+## Consolidated development readiness and PDF availability, 2026-09-27
+
+The first three cases received a bounded visual recheck of five previously
+rendered pages. A private register combines those twelve questions with the
+eight fourth-case review records, preserving twenty unique questions across four
+development cases. All human review fields remain pending, all model responses
+absent, and scoring/training eligibility false. Unreviewed pages and unresolved
+later procedural outcomes are explicitly outside the findings.
+
+One attribution gap was identified: a question comparing two publications named
+only one source in its original structured record. The consolidated record now
+references both; earlier drafts and their recorded hashes were preserved.
+
+A local PDF text-availability probe covered four existing files. Calculated
+inventory: 76 pages, of which nine returned zero non-whitespace characters from
+the extractor. Four of those nine pages were visually inspected and contain
+meaningful notice or decision text. The other five zero-text pages were not
+visually classified. Nonzero extracted text is not proof of complete extraction.
+Current remote versions were not retrieved for this probe.
+
+This supports a bounded candidate experiment comparing local OCR with ordinary
+PDF text extraction on original synthetic scans. The experiment, its independent
+references and acceptance criteria are not implemented or approved by this note.
+No OCR accuracy, human effort saving or model benefit was measured. Missing
+operative documents still require retrieval and cannot be supplied by inference.
+No runtime change was made; checks covered record references, review flags and
+preservation of the earlier private packet hashes.
+
+## Local OCR preflight and proposed experiment, 2026-09-27
+
+A local executable check measured Tesseract version 5.5.2. Its recognition-data
+listing contained only `osd`, which supplies orientation/script detection rather
+than the text-recognition data required for the proposed run. The private
+preflight record retains the executable digest and command outputs. Recognition
+status is `not_run_missing_recognition_data`; accuracy and human effort remain
+unmeasured. No data installation, OCR execution or network request occurred.
+
+The proposed bounded design is recorded in
+[the offline OCR experiment](superpowers/specs/2026-09-27-offline-ocr-experiment.md).
+It compares text extraction and local OCR across four original fictional
+document families in two representations. Authoring values stay in external
+configuration. Inputs, matching rules and baselines must be locked before any
+scoring; missing data must not be reported as zero accuracy. This document is
+an experiment proposal, not an implemented runtime capability.
+
+Next work is to finalise the fixture/matching registration and recognition-data
+provenance before running the synthetic comparison. Independent human review,
+source-use acceptance and lifecycle controls remain unresolved product gates.
+This update changes documentation only; software tests were not rerun.
+
+## Synthetic OCR experiment implemented and exercised, 2026-09-27
+
+The bounded experiment is now implemented under `experiments/ocr/`, outside the
+installed package and existing CLI. `prepare`, `lock` and `compare` author original
+fictional PDF pairs, bind inputs and tools to a registration, then retain native
+outputs and exact field comparisons. TOML holds all document content and engine
+settings. No real-document ingestion or case-ledger integration was added.
+
+The earlier missing-data preflight was resolved by a separate download from the
+official recognition-data repository at a pinned revision. The licence text and
+file digests were recorded. Data remains in ignored experiment output; no system
+installation, hosted inference or training occurred. The general analyst-model
+decision remains deferred.
+
+Two independently locked development runs used the same four authored families:
+clean pages at 150 dpi with 16-point type, then a predeclared stress condition at
+72 dpi with 10-point type. The assistant inspected every rendered page before
+locking. This was not independent human review. **Calculated exact-field counts:**
+clean image-only OCR 16/16, stress image-only OCR 7/16; majority 6/16 and seeded
+random 7/16 for both. Ordinary image-only PDF extraction returned 0/16 in each
+run. See [all results and limitations](../experiments/ocr/RESULTS.md).
+
+The stress run produced plausible wrong dates, a missing reference zero and
+label/scale failures. It did not exceed the random baseline. No rules were
+changed to repair the score. Neither successful process exit nor clean-template
+success justifies automatic acceptance into evidence. Per-page elapsed process
+times are measured; human correction time and time savings are unmeasured.
+
+Verification: 293 tests passed, including 56 experiment tests. Installed-package
+statement/branch coverage remains 94.45%; that figure excludes `experiments/`.
+Ruff lint and formatting passed. Native PDF/OCR calls were exercised separately
+on the local synthetic fixtures, not in tests. Independent static review found
+two issues, both fixed with regressions: unreadable native bytes now remain
+preserved and unscored, and changed runtime versions are refused before output.
+
+Named experiment checks cover exact digits and units, ambiguous labels, input
+and registration tampering, outside symlinks, running-code/runtime drift, missing
+recognition data, partial timeout output, unreadable UTF-8, failed-page
+denominators, visual-review acknowledgement and preservation of existing output.
+No semantic privacy filter or complete native dependency fingerprint is claimed.
+
+Next: specify source-page-linked field review and abstention before any integration
+of OCR with case reports. Representative varied-layout evaluation, independent
+human references, source-use acceptance and lifecycle controls remain open.
