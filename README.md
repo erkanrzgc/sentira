@@ -16,7 +16,7 @@ foundation is not a complete production privacy boundary.
 **Implemented now:** a Python 3.12 foundation for synthetic data, with validated
 documents, HMAC identity separation, restricted target types, atomic SQLite writes
 and strict observation-time reads. A separate synthetic evidence ledger renders
-three-domain Markdown briefings from external TOML files. No live collector, model
+three-domain Markdown briefings from external TOML files. No live collector, analyst model
 or numerical forecast is implemented. The sections below describe the intended product unless explicitly
 identified as implemented.
 
@@ -46,6 +46,11 @@ local field recovery on fictional PDF pairs. It is not connected to case reports
 or real-source ingestion. [Development findings](experiments/ocr/RESULTS.md)
 include failures on smaller, lower-resolution text; they establish no production
 document-reading accuracy.
+
+The [synthetic field-review workflow](experiments/field_review/README.md) keeps
+OCR candidates pending until an explicit field decision is supplied. Decisions
+are bound to source-page and result digests. This is a separate development
+workflow, not independent human validation or case-ledger integration.
 
 ---
 

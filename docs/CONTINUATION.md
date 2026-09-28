@@ -586,3 +586,54 @@ No semantic privacy filter or complete native dependency fingerprint is claimed.
 Next: specify source-page-linked field review and abstention before any integration
 of OCR with case reports. Representative varied-layout evaluation, independent
 human references, source-use acceptance and lifecycle controls remain open.
+
+## Explicit synthetic field review, 2026-09-28
+
+`experiments/field_review/` now creates a source-linked review packet and applies
+external TOML decisions. Packets include registered image digests and OCR
+candidates but exclude authoring answers and baselines. Every field defaults to
+pending; accepting, correcting or withholding a value requires an explicit
+decision. Corrections require a supplied value and reason, never an answer lookup.
+
+Decision bindings cover the packet, registration and result bytes. Source image
+changes fail the existing registration check; changed results invalidate earlier
+decisions. Missing, ambiguous or failed recognition cannot be accepted. Reports
+retain every field and suppress pending/withheld values. Existing output is never
+silently replaced. This is not reviewer authentication or proof of correctness.
+
+The recorded stress output produced a 32-field packet: eight paired pages times
+four fields, not 32 independent cases. With empty decisions, all 32 remained
+pending with no approved values. A separately labelled **simulated** demonstration
+corrected one date, accepted one duration and withheld one scale; 29 fields stayed
+pending. Exactly those two explicit values appeared in the structured report.
+No independent human evaluation, true-reference label or time saving is claimed.
+
+| Contract | Named test in `tests/experiments/` |
+| --- | --- |
+| Exclude answer keys and suppress unreviewed candidates | `test_field_review.py::test_packet_excludes_answers_and_pending_report_suppresses_candidates` |
+| Preserve explicit corrections and omitted gaps | `test_field_review.py::test_explicit_correction_never_uses_expected_and_retains_omissions` |
+| Reject acceptance of unusable recognition | `test_field_review.py::test_unusable_candidate_cannot_be_accepted` |
+| Invalidate changed inputs | `test_field_review.py::test_digest_binding_covers_results_and_packet`; `::test_tampered_source_is_rejected` |
+| Reject duplicate/unknown decisions | `test_field_review.py::test_malformed_or_duplicate_decisions_fail` |
+| Preserve existing output | `test_field_review_cli.py::test_packet_command_never_replaces_existing_output` |
+
+Verification: 336 tests passed, including 43 new field-review checks. Ruff lint and
+format passed. Installed-package statement/branch coverage remains 94.45% and
+does not include experimental modules. An independent reviewer reran all 43
+field-review tests and found no substantive issue. Both original OCR experiment
+locks and their recorded environments still validated; this increment did not
+alter those runner files or rerun OCR.
+
+Local demonstrations are in `out/field-review-packet-v1`,
+`out/field-review-pending-v1` and `out/field-review-simulated-v1` in the attached
+worktree. The packet digest is
+`df2d5424fe8c832363f5e333db535e56a52e4fa78bc6bb88c39bb3d15f336107`.
+The structured report also records the exact TOML decision-file digest.
+
+The OCR and review commands remain separate synthetic experiments. Case-ledger
+integration, persistent review history, authenticated review, calibrated
+abstention and representative independent evaluation are not implemented.
+Next work should define which reviewed field types may become evidence and how
+later source revisions withdraw that eligibility before any automatic hand-off.
+Live-source permissions, lifecycle controls and the analyst-model gate remain
+unchanged.
