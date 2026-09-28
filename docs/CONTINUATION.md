@@ -637,3 +637,55 @@ Next work should define which reviewed field types may become evidence and how
 later source revisions withdraw that eligibility before any automatic hand-off.
 Live-source permissions, lifecycle controls and the analyst-model gate remain
 unchanged.
+
+## Revision-aware synthetic candidate eligibility, 2026-09-28
+
+`experiments/eligibility/` rebuilds the locked field-review packet, reapplies
+external decisions and checks an external source-version context at a cutoff.
+Only explicitly reviewed, permitted and structurally valid fields can appear as
+`eligible_candidate`. This is a candidate list, not a case-event hand-off.
+
+A changed source version requires fresh review even if its bytes revert to the
+old digest. Unavailable and withdrawn sources suppress values. Valid future
+observations do not change earlier output. Review times and source observation
+times remain operator-authored synthetic simulation inputs, not a trusted clock
+or persistent review history. The reviewed and latest visible version/image
+digest pairs are explicitly distinguished.
+
+The existing stress packet and simulated decisions were reused without rerunning
+OCR. Calculated from the emitted rows: the early view retained 29 pending fields,
+one withheld field and two eligible candidates. After one simulated source-page
+revision, all four fields on that page required review and the other 28 remained
+pending. No values survived the later view; replacement values were not inferred.
+These are software demonstration counts, not independent evaluation scores.
+
+| Contract | Named test in `tests/experiments/` |
+| --- | --- |
+| Future observations preserve earlier output; changed/reverted versions invalidate review; version/digest pairs stay distinct | `test_eligibility.py::test_future_observation_invariance_and_changed_then_reverted_requires_review` |
+| Withdrawn or unavailable sources suppress values | `test_eligibility.py::test_source_status_suppresses_values` |
+| Future review, pending, withheld and unpermitted fields remain gaps | `test_eligibility.py::test_pre_review_is_invisible_and_pending_withheld_not_permitted_remain_gaps` |
+| Invalid calendar dates and malformed fields are not repaired | `test_eligibility.py::test_invalid_values_are_not_repaired` |
+| Exact character and calendar-month preservation | `test_eligibility.py::test_valid_candidates_preserve_all_characters_and_json_timestamps` |
+| Reject malformed context and mismatched review bindings | `test_eligibility.py::test_malformed_context_and_wrong_binding_raise_value_error` |
+| Preserve prior output and record exact input hashes | `test_eligibility_cli.py::test_existing_output_is_preserved`; `::test_exact_input_hashes_and_report_written` |
+
+The bounded offline chain now reaches reviewed-field candidate eligibility.
+Independent human references and correction-time measurements remain absent.
+Further product acceptance needs those observations; repeated runs over these
+same authored pages cannot supply them. Do not infer forecasting ability or start
+model training from this demonstration. Event semantics, authenticated review,
+persistent source lifecycle controls and live-source permission remain separate
+unimplemented requirements.
+
+Verification: 384 tests passed, including 48 eligibility checks; Ruff lint and
+format passed. Independent review found two provenance issues, both corrected:
+reviewed/latest version-digest pairs are now separate, and all four raw input-file
+digests are retained alongside canonical packet/decision digests. The reviewer
+reran the 48 focused checks and found no remaining blocker in this bounded scope.
+The previously measured installed-package coverage excludes experiments; no new
+experiment coverage percentage is claimed.
+
+Final local demonstrations are `out/eligibility-early-v2` and
+`out/eligibility-later-v2`, using `out/eligibility-context-v1.toml`, in the attached
+worktree. Earlier `v1` output remains preserved but predates the final complete
+input-hash reporting. Original OCR and field-review artefacts remain intact.
