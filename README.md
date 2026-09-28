@@ -41,6 +41,12 @@ reserved source URLs are accepted; this is not a semantic personal-data filter.
 Observation timestamps are supplied per snapshot, not durably captured by a
 collector. There is no automated document reading, network access or model call.
 
+A separate [synthetic OCR experiment](experiments/ocr/README.md) now measures
+local field recovery on fictional PDF pairs. It is not connected to case reports
+or real-source ingestion. [Development findings](experiments/ocr/RESULTS.md)
+include failures on smaller, lower-resolution text; they establish no production
+document-reading accuracy.
+
 ---
 
 ## What the system produces
