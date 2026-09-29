@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Synthetic field review</title><style>/* STYLE */</style></head>
+<body><header><p class="eyebrow">OFFLINE DEVELOPMENT WORKFLOW</p><h1>Synthetic field review</h1>
+<p>Inspect each source page before choosing a decision. Pending fields remain gaps. Downloads do not update the case ledger.</p>
+<p class="notice">Refresh or closing this page loses in-memory decisions. Download before leaving. This assisted review is not independent reference labelling or authenticated human evaluation.</p>
+<details><summary>Packet binding</summary><code id="digest"></code></details></header>
+<nav aria-label="Source pages"><button id="previous">Previous page</button><strong id="page-count"></strong><button id="next">Next page</button><span id="progress" aria-live="polite"></span></nav>
+<main><section aria-labelledby="source-title"><h2 id="source-title">Source page</h2>
+<label for="zoom">Image zoom</label> <input id="zoom" type="range" min="50" max="250" value="100" step="25"><output id="zoom-value" for="zoom">100%</output>
+<div class="image-viewport"><img id="source-image" alt="Registered synthetic source page"></div></section>
+<section aria-labelledby="fields-title"><h2 id="fields-title">Field decisions</h2><p>Correct: enter a value and reason. Withhold: enter a reason. Accept is enabled only for a valid found candidate.</p><div id="fields"></div></section></main>
+<footer><button id="download-decisions">Download decisions TOML</button><p id="error" role="alert"></p>
+<h2>Browser session time</h2><p>Measured active visible browser-session time only; not correction time or labour saving. Hiding the page pauses the timer; start again to resume.</p>
+<button id="start-timer">Start timer</button><button id="pause-timer">Pause timer</button><output id="timer" aria-live="off">0 ms (paused)</output>
+<button id="download-timer">Download session JSON</button></footer>
+<script id="review-data" type="application/json"><!-- DATA --></script>
+<script>/* MODEL */</script><script>/* APP */</script></body></html>
