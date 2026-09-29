@@ -689,3 +689,47 @@ Final local demonstrations are `out/eligibility-early-v2` and
 `out/eligibility-later-v2`, using `out/eligibility-context-v1.toml`, in the attached
 worktree. Earlier `v1` output remains preserved but predates the final complete
 input-hash reporting. Original OCR and field-review artefacts remain intact.
+
+## Local synthetic review screen, 2026-09-29
+
+`experiments/review_screen/` generates a standalone `index.html` from the locked
+OCR fixtures and result file. The generated page embeds source images and the
+answer-free review packet. Source bytes are rechecked before output. All fields
+start pending; explicit decisions export to the existing digest-bound TOML
+contract. No server, model or live collector is added.
+
+The page includes source navigation, image zoom and correction/withholding forms.
+An optional start/pause timer exports active visible browser-session milliseconds
+separately. This is not measured correction effort, authenticated human review
+or evidence of time savings. Browser memory is transient; refresh loses edits.
+
+Verification: 392 Python tests passed with no skips in this environment; the
+separate Node suite passed two decision/timer tests. Ruff lint and format passed.
+Independent review reran eight new Python checks and the two Node checks. An
+export regression for an identifier containing DEL was corrected: the character
+is escaped in TOML rather than emitted literally. Tests also cover quotes,
+backslashes, Unicode, pending omission, image tampering after packet creation,
+non-PNG input, script-termination escaping and preserving existing output.
+
+| Contract | Named test |
+| --- | --- |
+| Answer-free packet binding, embedded images and injection escaping | `tests/experiments/test_review_screen.py::test_standalone_packet_binding_images_and_injection` |
+| Fresh output and source integrity | `tests/experiments/test_review_screen.py::test_fresh_directory_and_tampering_leave_no_output` |
+| Export compatible with Python review validation | `tests/experiments/test_review_screen.py::test_javascript_toml_round_trip` |
+| Invalid decisions block export | `tests/experiments/review_screen.test.cjs`: `pending omitted; invalid acceptance and correction refused` |
+| Hidden-page time requires explicit restart | `tests/experiments/review_screen.test.cjs`: `timer counts only explicitly active visible session; hidden requires restart` |
+
+The final local demonstration is `out/review-screen-v2/index.html` in the attached
+worktree. Its eight embedded source images and 32 packet fields were checked
+against the original image and packet digests. Earlier `v1` output is preserved.
+These are generated-artifact checks, not a visual inspection.
+
+**Open verification:** browser tooling refused the local `file://` URL under its
+security policy and explicitly prohibited workaround access. No browser rendering,
+click, download or visibility-event smoke test was completed. The source and
+export/timer unit tests cannot establish those UI behaviours. A person must open
+the generated page locally, check layout/navigation, download an explicit review
+and run the existing Python report validator before calling the screen usable.
+Do not rerun unchanged tests or generate more pages to imply this gate has passed.
+Independent human labels, representative evaluation and source-use gates remain
+open; no model training or real collection follows from this screen.
