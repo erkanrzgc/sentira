@@ -733,3 +733,21 @@ and run the existing Python report validator before calling the screen usable.
 Do not rerun unchanged tests or generate more pages to imply this gate has passed.
 Independent human labels, representative evaluation and source-use gates remain
 open; no model training or real collection follows from this screen.
+
+## User-assisted screen hand-off, 2026-09-30
+
+The user supplied screenshots showing the local page, source image, an accepted
+decision reference and a corrected date, followed by the downloaded decision
+TOML. The existing Python report command validated the original packet binding
+and produced one accepted field, one corrected field and 30 pending gaps. The
+accepted reference is `004.018/0081`; the corrected date is `2030-02-08`.
+The exact downloaded file digest matches the generated report provenance.
+
+The report and an unchanged copy of the submitted decisions are preserved in
+ignored `out/user-assisted-review-v1/` in the attached worktree. User-entered
+reason text remains in those local artefacts, not published documentation.
+This closes the narrow displayed-page, accept/correct and download-to-validator
+hand-off check. The assistant guided both decisions, so this is not independent
+human reference labelling or a quality score. No session timing was submitted.
+Page navigation, withholding, timer visibility events and broader browser/layout
+coverage remain unverified. The earlier browser-tool restriction remains in force.
