@@ -17,3 +17,13 @@ two Node tests passed, with Ruff clean and independent review complete. The fina
 generated demo is `out/review-screen-v2/index.html`. Browser smoke testing remains
 open because tool policy refused local-file navigation and prohibited workarounds.
 Do not mark step 3's visual/interactive portion complete from unit-test results.
+
+Follow-up on 2026-09-30: the user supplied screenshots and an exported decision
+file, and the Python validator confirmed the assisted accept/correct hand-off.
+Add isolated Node application-event tests for navigation retaining drafts,
+pending omission, invalid export rejection, withholding, visibility pause and
+unload warnings. Execute the actual application scripts against a minimal DOM
+test double with controlled time and captured download payloads. This does not
+open a browser or establish rendering, real downloads or browser event delivery.
+Independently review the harness and verify selected in-memory mutations are
+detected before recording the additional software guarantees.
