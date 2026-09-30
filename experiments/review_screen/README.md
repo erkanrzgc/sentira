@@ -45,10 +45,15 @@ Verification commands:
 
 ```powershell
 python -m pytest tests/experiments/test_review_screen.py -q
-node --test tests/experiments/review_screen.test.cjs
+node --test tests/experiments/review_screen.test.cjs tests/experiments/review_screen_app.test.cjs
 ```
 
 Node.js is a development check for JavaScript export and timer logic, not a
 runtime requirement for the generated page. Cross-language checks explicitly
 skip when Node is unavailable. These tests do not replace visual or interactive
 browser verification.
+
+Application-event checks run the actual scripts against a small DOM test double
+with controlled time and captured download payloads. They check event wiring and
+state retention only: no browser is opened, images are not rendered, and native
+download or visibility-event delivery is not tested.

@@ -751,3 +751,25 @@ hand-off check. The assistant guided both decisions, so this is not independent
 human reference labelling or a quality score. No session timing was submitted.
 Page navigation, withholding, timer visibility events and broader browser/layout
 coverage remain unverified. The earlier browser-tool restriction remains in force.
+
+## Review-screen application-event checks, 2026-09-30
+
+The separate Node suite now executes the real application and model scripts
+against a small explicit DOM/event test double. Named checks in
+`tests/experiments/review_screen_app.test.cjs` cover correction/reason retention
+across pages, returning a field to pending, disabled acceptance for unusable OCR,
+invalid drafts on other pages blocking export, withholding payloads, visibility
+pause with explicit restart and unload warnings after edits. In-memory mutations
+that remove restoration or disconnect the visibility listener are detected.
+
+These tests capture Blob contents and invoke registered callbacks with controlled
+time. They do not render images, parse HTML as a browser, deliver native browser
+events, enforce native select behaviour or verify real download/dialog handling.
+Consequently, remaining browser verification is not closed by this increment.
+No production behaviour changed and no new human evaluation was performed.
+
+A static template contract also checks each scaffold ID appears exactly once;
+missing and duplicated attributes are rejected in negative test cases. This is
+not an HTML parser. Verification: 392 Python tests and 10 combined Node tests
+passed; Ruff lint and format passed. Independent review confirmed the application
+tests exercise actual callbacks and state retention with explicit mock limits.
