@@ -236,6 +236,22 @@ py -3.12 -m venv .venv
 ./.venv/Scripts/python.exe -m ruff format --check .
 ```
 
+On Linux or macOS, where `python3` may not be 3.12, name the interpreter explicitly:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pip install -e .
+.venv/bin/python -m pytest --cov=sentira --cov-branch --cov-fail-under=80
+.venv/bin/python -m ruff check .
+.venv/bin/python -m ruff format --check .
+node --test tests/experiments/review_screen.test.cjs tests/experiments/review_screen_app.test.cjs
+```
+
+The same checks run in continuous integration on every push and pull request
+(`.github/workflows/ci.yml`). The Node.js step covers the review-screen scripts;
+without Node.js the cross-language Python check is skipped.
+
 Dependency installation may access the package index; the tests block network
 connections and use original synthetic fixtures. The end-to-end example is
 `tests/test_offline_e2e.py`: it hashes synthetic identifiers, writes a document and

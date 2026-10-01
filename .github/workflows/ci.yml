@@ -1,0 +1,48 @@
+name: Offline checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      # Node.js runs the review-screen scripts and lets the cross-language
+      # Python check run instead of skipping.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned development dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+
+      - name: Tests with branch coverage
+        run: python -m pytest --cov=sentira --cov-branch --cov-fail-under=80
+
+      - name: Lint
+        run: python -m ruff check .
+
+      - name: Format
+        run: python -m ruff format --check .
+
+      - name: Review-screen scripts
+        run: node --test tests/experiments/review_screen.test.cjs tests/experiments/review_screen_app.test.cjs
