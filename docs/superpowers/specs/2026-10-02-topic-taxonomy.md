@@ -45,7 +45,7 @@ economy, including markets and gold; market data themselves are deferred (ROADMA
 | Keywords | A whole word, or a stem of at least four letters ending in `*`; letters only, written in normalised form |
 | Ownership | A keyword belongs to one topic only, and a stem may not cover another keyword in any topic, so one word matches at most one keyword |
 | Normalisation | A registered case map folds characters before lower-casing, so language-specific case folding is data, not code |
-| Freezing | `frozen_at` and the content digest; assignment and the audit refuse a taxonomy whose digest differs from the registered one; the pilot lock records the digest and is refused before `frozen_at` |
+| Freezing | `frozen_at` and the content digest; assignment and the audit refuse a taxonomy whose digest differs from the registered one; the pilot lock records the digest and is refused before `frozen_at`, and a pilot takes the registered digest from its lock, so a taxonomy edited after the lock is refused |
 | Counters | Unknown fields are refused, so no topic can be defined by a counter |
 
 A lexical matcher sees surface forms. In a language that builds words with
@@ -71,7 +71,7 @@ replay carve-out for retrieved rows and is reported when that is built.
 | Element | Design |
 |---|---|
 | Sample | Seeded, per stratum: positive-episode, negative-episode and non-episode intervals, crossed with assigned and unassigned comments as the strata the caller supplies. A document enters once; a stratum smaller than the registered size is taken whole and its shortfall reported |
-| Provenance | Candidates are built from an as-of comment and its assignment and keep its taxonomy digest; the draw refuses another digest or an unregistered topic, and records the digest, the topics and each stratum's population |
+| Provenance | Candidates are built from an as-of comment and its assignment and keep its taxonomy digest; the draw refuses another digest or an unregistered topic, and holds the taxonomy and each stratum's population. The draw checks itself on construction, so a hand-built or edited draw meets the same rules, and an empty draw has no report |
 | Span | A development audit draws only from before the first origin; a confirmatory audit only from after it |
 | Blinding | Items carry an opaque identifier and the text; they are shuffled across strata; the key to documents, strata and assignments is kept apart |
 | Size | About 100 items per stratum give a Wilson interval of roughly ±0.1 at a proportion of one half (*calculated*) |
@@ -103,6 +103,9 @@ replay carve-out for retrieved rows and is reported when that is built.
 | A short stratum is reported | `::test_short_stratum_is_reported_not_hidden` |
 | Duplicates, other digests and unregistered topics are refused | `::test_draw_refuses_duplicates_foreign_digests_and_unknown_topics` |
 | Candidates keep the assignment digest | `::test_candidate_carries_the_assignment_digest` |
+| A draw checks itself | `::test_draw_validates_itself` |
+| An empty audit has no report | `::test_empty_audit_is_refused` |
+| A taxonomy edited after the lock is refused | `backtest/test_pilot.py::test_locked_taxonomy_digest_refuses_a_later_edit` |
 | The pilot lock binds the taxonomy | `backtest/test_pilot.py::test_pilot_lock_binds_a_taxonomy_frozen_before_it` |
 
 Open: whether the real keyword lists, which reveal the target language, are kept

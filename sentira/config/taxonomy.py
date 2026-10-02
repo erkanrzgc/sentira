@@ -76,11 +76,15 @@ class Taxonomy:
         if any(self.normalise(keyword) != keyword for keyword in keywords):
             raise ValueError("Keywords must be written in their normalised form")
         # One word may match at most one keyword: a stem may not cover another
-        # keyword, in its own topic or any other.
-        for stem in (keyword[:-1] for keyword in keywords if keyword.endswith("*")):
-            for keyword in keywords:
-                if keyword != stem + "*" and keyword.rstrip("*").startswith(stem):
-                    raise ValueError("A stem covers another keyword")
+        # keyword, in its own topic or any other. Sorted by their letters, the
+        # keywords a stem covers follow it directly, and a whole word spelt like
+        # the stem precedes it, so neighbours suffice.
+        ordered = sorted((keyword.rstrip("*"), keyword) for keyword in keywords)
+        for (word, keyword), (following, _) in zip(ordered, ordered[1:], strict=False):
+            if following.startswith(word) and keyword.endswith("*"):
+                raise ValueError("A stem covers another keyword")
+            if following == word:
+                raise ValueError("A stem covers another keyword")
 
     @classmethod
     def from_mapping(cls, raw):

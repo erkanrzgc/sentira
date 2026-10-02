@@ -21,6 +21,9 @@ from sentira.config.collection import load_collection_policy
 from sentira.config.quota import load_quota_policy
 from sentira.config.taxonomy import load_taxonomy
 from sentira.config.volume import load_volume
+from sentira.nlp.topics import assign_visible
+from sentira.storage.asof import AsOfReader
+from sentira.storage.repository import Repository
 
 ROOT = Path(__file__).resolve().parents[2]
 PILOT = ROOT / "examples/synthetic-pilot.toml"
@@ -182,6 +185,19 @@ def test_pilot_lock_binds_a_taxonomy_frozen_before_it():
         lock_text(taxonomy=late)
 
 
+def test_locked_taxonomy_digest_refuses_a_later_edit(clock, document):
+    locked = load_pilot_lock(*PATHS, lock_path=LOCK)
+    with Repository(":memory:", clock=clock) as repo:
+        repo.ingest(replace(document, text="valtor prensek"))
+        result = AsOfReader(repo).read(clock.now)
+    # Assignment takes the expected digest from the lock, not from the caller.
+    (assignment,) = assign_visible(result, locked.taxonomy, expected_sha256=locked.digests[-1])
+    assert assignment.taxonomy_sha256 == locked.digests[-1]
+    edited = replace(locked.taxonomy, version="synthetic-taxonomy-2")
+    with pytest.raises(ValueError, match="registered digest"):
+        assign_visible(result, edited, expected_sha256=locked.digests[-1])
+
+
 def test_pilot_lock_refuses_projected_cost_above_ceiling(tmp_path):
     path = copy(tmp_path, PILOT, "pilot.toml")
     exact = load_pilot(edit(path, "quota_ceiling_units = 30000", "quota_ceiling_units = 20904"))
@@ -223,6 +239,7 @@ def test_changed_input_refused_after_lock(tmp_path, index, old, new):
         ('"synthetic-broadcaster-03"', '"synthetic-broadcaster-02"'),
         ('"sample": {', '"sample": ["x"], "unused": {'),
         ('"schema": 2', '"schema": 1'),
+        ('"schema": 2', '"schema": "2"'),
         ('"schema": 2', '"schema": 2.0'),
         ('"schema": 2', '"schema": 2, "note": "x"'),
         ('"taxonomy_sha256": "', '"taxonomy_sha256": "0'),
@@ -232,6 +249,19 @@ def test_tampered_lock_record_refused(tmp_path, old, new):
     lock = edit(copy(tmp_path, LOCK, "pilot.lock"), old, new)
     with pytest.raises(ValueError):
         load_pilot_lock(*PATHS, lock_path=lock)
+
+
+def test_older_lock_schema_is_named(tmp_path):
+    record = json.loads(LOCK.read_text(encoding="utf-8"))
+    del record["taxonomy_sha256"]
+    lock = tmp_path / "pilot.lock"
+    lock.write_text(json.dumps({**record, "schema": 1}), encoding="utf-8")
+    with pytest.raises(ValueError, match="schema"):
+        load_pilot_lock(*PATHS, lock_path=lock)
+    for text in ("[]", "{"):
+        lock.write_text(text, encoding="utf-8")
+        with pytest.raises(ValueError, match="readable"):
+            load_pilot_lock(*PATHS, lock_path=lock)
 
 
 def test_pilot_lock_never_overwritten(tmp_path):

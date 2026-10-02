@@ -228,7 +228,8 @@ def lock_pilot(pilot, frame, policy, quota, volume, taxonomy, *, locked_at, sour
     )
 
 
-def pilot_lock_text(*values, locked_at, source):
+def pilot_lock_text(pilot, frame, policy, quota, volume, taxonomy, *, locked_at, source):
+    values = (pilot, frame, policy, quota, volume, taxonomy)
     locked = lock_pilot(*values, locked_at=locked_at, source=source)
     record = {
         **{f"{name}_sha256": value for name, value in zip(INPUTS, locked.digests, strict=True)},
@@ -265,13 +266,20 @@ def load_pilot_lock(*paths, lock_path):
     keys = [f"{name}_sha256" for name in INPUTS]
     keys += ["locked_at", "locked_at_source", "projected_units", "sample", "schema"]
     try:
-        record = exact(json.loads(Path(lock_path).read_text(encoding="utf-8")), keys)
+        record = json.loads(Path(lock_path).read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        raise ValueError("The pilot lock is not readable") from None
+    if not isinstance(record, dict):
+        raise ValueError("The pilot lock is not readable")
+    # The schema is checked first, so an older lock is named as such.
+    if type(record.get("schema")) is not int or record["schema"] != SCHEMA:
+        raise ValueError("Unsupported pilot lock schema")
+    exact(record, keys)
+    try:
         locked_at = utc(datetime.fromisoformat(record["locked_at"]))
         sample = tuple((name, tuple(ids)) for name, ids in record["sample"].items())
-    except (json.JSONDecodeError, TypeError, AttributeError):
+    except (TypeError, AttributeError):
         raise ValueError("The pilot lock is not readable") from None
-    if type(record["schema"]) is not int or record["schema"] != SCHEMA:
-        raise ValueError("Unsupported pilot lock schema")
     return LockedPilot(
         *inputs,
         digests=tuple(record[key] for key in keys[: len(INPUTS)]),

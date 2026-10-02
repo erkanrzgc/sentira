@@ -53,7 +53,7 @@ review, which raised the lock schema to 2.
 | Taxonomy | The taxonomy must be frozen at or before the lock time, so no topic is written after the pilot has seen data |
 | Time source | Without `--locked-at` the system clock is used and recorded as `system`; a typed time is recorded as `declared`. A declared time is a statement, not evidence of order: a live pilot must use the system clock and anchor the lock outside the repository before collection |
 | Cost | With the pilot's channel count, live units per day × live days plus the retrieval of exactly the history span (every thread page and each channel's playlist pages, at least one each). A projection above the ceiling is refused |
-| Integrity | A changed input file, sample, projection, lock time or time source, a value of the wrong type or an unknown lock field is refused |
+| Integrity | A changed input file, sample, projection, lock time or time source, a value of the wrong type or an unknown lock field is refused; the schema is read first, so a lock of an earlier schema is named as such |
 
 For the example (12 channels, 14 live days, 28 history days) the projection is
 768 × 14 + 3,360 × 3 + 12 × 6 = 20,904 units, within a ceiling of 30,000
@@ -85,6 +85,7 @@ For the example (12 channels, 14 live days, 28 history days) the projection is
 | No lock before the taxonomy is frozen | `test_pilot_lock_binds_a_taxonomy_frozen_before_it` |
 | Any changed input is refused | `test_changed_input_refused_after_lock` |
 | A tampered lock record is refused | `test_tampered_lock_record_refused` |
+| A lock of an earlier schema is named as such | `test_older_lock_schema_is_named` |
 | A lock is never replaced | `test_pilot_lock_never_overwritten` |
 | The `lock-pilot` command, its time source and output directory | `test_lock_pilot_command` |
 | The channel frame is canonical, counter-free and dated | `config/test_channels.py::test_shipped_frame_validates_in_canonical_order`, `::test_file_order_does_not_change_the_digest`, `::test_invalid_frames_are_refused` |

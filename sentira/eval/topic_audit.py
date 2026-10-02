@@ -72,18 +72,70 @@ class AuditItem:
     text: str
 
 
+def _check_candidate(candidate, sha256, topics):
+    if type(candidate) is not Candidate:
+        raise ValueError("Validated candidates are required")
+    if candidate.taxonomy_sha256 != sha256:
+        raise ValueError("A candidate was assigned under another taxonomy digest")
+    if candidate.assigned is not None and candidate.assigned not in topics:
+        raise ValueError("A candidate is assigned to an unregistered topic")
+
+
 @dataclass(frozen=True, slots=True)
 class AuditDraw:
-    """Blind items, the key kept apart from them, and what weighting needs."""
+    """Blind items, the key kept apart from them, and what weighting needs.
 
+    The draw checks itself on construction, so a hand-built or edited draw
+    meets the same rules as one from draw_audit. Topics and digest are read
+    from the taxonomy, so neither can be changed apart from it.
+    """
+
+    taxonomy: Taxonomy
     mode: str
     seed: int
     per_stratum: int
-    taxonomy_sha256: str
-    topics: tuple[str, ...]
     population: Mapping[str, int]
     items: tuple[AuditItem, ...]
     key: Mapping[str, Candidate]
+
+    def __post_init__(self):
+        if type(self.taxonomy) is not Taxonomy:
+            raise ValueError("A validated taxonomy is required")
+        if self.mode not in MODES:
+            raise ValueError("The audit mode is development or confirmatory")
+        integer(self.per_stratum, 1, 100_000)
+        integer(self.seed, 0, 2**63 - 1)
+        if not isinstance(self.population, Mapping) or not isinstance(self.key, Mapping):
+            raise ValueError("The population and the key are mappings")
+        population = {
+            slug(stratum): self.population[stratum] for stratum in sorted(self.population)
+        }
+        for size in population.values():
+            integer(size, 1, 10**9)
+        key, sha256, topics = dict(self.key), self.taxonomy.sha256, self.topics
+        counts = dict.fromkeys(population, 0)
+        for candidate in key.values():
+            _check_candidate(candidate, sha256, topics)
+            if candidate.stratum not in counts:
+                raise ValueError("A candidate's stratum has no recorded population")
+            counts[candidate.stratum] += 1
+        if len({candidate.doc_hash for candidate in key.values()}) != len(key):
+            raise ValueError("A document may enter the audit once")
+        if any(counts[stratum] != min(self.per_stratum, population[stratum]) for stratum in counts):
+            raise ValueError("Each stratum is sampled at its registered size or taken whole")
+        expected = tuple(AuditItem(audit_id, candidate.text) for audit_id, candidate in key.items())
+        if type(self.items) is not tuple or self.items != expected:
+            raise ValueError("The items must follow the key")
+        object.__setattr__(self, "population", MappingProxyType(population))
+        object.__setattr__(self, "key", MappingProxyType(key))
+
+    @property
+    def taxonomy_sha256(self):
+        return self.taxonomy.sha256
+
+    @property
+    def topics(self):
+        return tuple(topic.id for topic in self.taxonomy.topics)
 
     @property
     def sampled(self):
@@ -119,15 +171,10 @@ def draw_audit(candidates, taxonomy, *, expected_sha256, per_stratum, seed, orig
     topics = tuple(topic.id for topic in taxonomy.topics)
     seen, pool = set(), {}
     for candidate in candidates:
-        if type(candidate) is not Candidate:
-            raise ValueError("Validated candidates are required")
+        _check_candidate(candidate, sha256, topics)
         if candidate.doc_hash in seen:
             raise ValueError("A document may enter the audit once")
         seen.add(candidate.doc_hash)
-        if candidate.taxonomy_sha256 != sha256:
-            raise ValueError("A candidate was assigned under another taxonomy digest")
-        if candidate.assigned is not None and candidate.assigned not in topics:
-            raise ValueError("A candidate is assigned to an unregistered topic")
         before = candidate.published_at < origin
         if before == (mode == "development"):
             pool.setdefault(candidate.stratum, []).append(candidate)
@@ -139,14 +186,13 @@ def draw_audit(candidates, taxonomy, *, expected_sha256, per_stratum, seed, orig
     random.Random(f"{seed}:order").shuffle(chosen)
     key = {f"item-{index:05d}": candidate for index, candidate in enumerate(chosen)}
     return AuditDraw(
+        taxonomy=taxonomy,
         mode=mode,
         seed=seed,
         per_stratum=per_stratum,
-        taxonomy_sha256=sha256,
-        topics=topics,
-        population=MappingProxyType({stratum: len(pool[stratum]) for stratum in sorted(pool)}),
+        population={stratum: len(members) for stratum, members in pool.items()},
         items=tuple(AuditItem(audit_id, candidate.text) for audit_id, candidate in key.items()),
-        key=MappingProxyType(key),
+        key=key,
     )
 
 
@@ -211,6 +257,8 @@ def audit_metrics(draw, annotations):
     """Weighted precision and recall per topic, and accuracy beside its baselines."""
     if type(draw) is not AuditDraw:
         raise ValueError("An audit draw is required")
+    if not draw.key:
+        raise ValueError("An audit needs at least one item")
     if not isinstance(annotations, Mapping) or set(annotations) != set(draw.key):
         raise ValueError("Every audit item needs exactly one annotation")
     for label in annotations.values():
@@ -222,29 +270,29 @@ def audit_metrics(draw, annotations):
         for i, c in draw.key.items()
     ]
     total = sum(weight for weight, _, _ in rows)
-
-    def share(predicate):
-        return sum(weight for weight, assigned, label in rows if predicate(assigned, label)) / total
-
+    # Weighted shares of each label among the annotations and the assignments.
+    labels = (*draw.topics, None)
+    prevalence = dict.fromkeys(labels, Fraction(0))
+    assigned = dict.fromkeys(labels, Fraction(0))
+    for weight, given, label in rows:
+        prevalence[label] += weight / total
+        assigned[given] += weight / total
     topics = {}
     for topic in draw.topics:
-        precision = [(w, label == topic) for w, assigned, label in rows if assigned == topic]
-        recall = [(w, assigned == topic) for w, assigned, label in rows if label == topic]
+        precision = [(w, label == topic) for w, given, label in rows if given == topic]
+        recall = [(w, given == topic) for w, given, label in rows if label == topic]
         topics[topic] = TopicRates(
             _rate(precision),
             _rate(recall),
-            float(share(lambda assigned, label, topic=topic: label == topic)),
-            float(share(lambda assigned, label, topic=topic: assigned == topic)),
+            float(prevalence[topic]),
+            float(assigned[topic]),
         )
-    labels = (*draw.topics, None)
-    prevalence = {label: share(lambda _, actual, label=label: actual == label) for label in labels}
-    assigned = {label: share(lambda given, _, label=label: given == label) for label in labels}
     majority = max(labels, key=lambda label: prevalence[label])
     return AuditReport(
         taxonomy_sha256=draw.taxonomy_sha256,
         mode=draw.mode,
         topics=MappingProxyType(topics),
-        accuracy=_rate([(weight, assigned == label) for weight, assigned, label in rows]),
+        accuracy=_rate([(weight, given == label) for weight, given, label in rows]),
         majority_label=majority,
         majority_baseline=float(prevalence[majority]),
         random_baseline=float(sum(prevalence[label] * assigned[label] for label in labels)),
