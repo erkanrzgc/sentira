@@ -202,6 +202,14 @@ Validation concerns provenance, temporal cutoff, contradiction visibility and
 reproducibility, not forecasting accuracy. This is a separate product track; the
 existing Phase 1 and T1 protocol remain specific to aggregate discourse growth.
 
+### Operator decisions, 2 October 2026: markets and the economy
+
+| Option | Decision |
+|---|---|
+| Measure discourse about the economy (exchange rates, gold, stock markets, inflation and prices) | Adopted. It enters the frozen taxonomy as a standing topic when the topic dictionary is designed; it needs no new data source |
+| Add market series (domestic and foreign stock indices, foreign exchange, gold) as context and as candidates for the event log | Deferred until after Phase 1. Official sources only, with the data licence checked before any download; used as context and for event-impact measurement, never as a feature of the growth forecast |
+| Forecast market direction or issue buy and sell signals | Not pursued. Such output may fall under regulated investment advice, a question referred to counsel, and evidence that discourse predicts prices is contested |
+
 ### Deferred production features
 
 Metered platform integration (skeleton behind a flag, disabled), a dashboard (a
