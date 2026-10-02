@@ -159,13 +159,14 @@ Implemented in the offline foundation:
 sentira/
   core/         Document envelope, HMAC identity boundary, synthetic evidence,
                 procedural case records and registration helpers
-  config/       target, briefing, case, quota and collection-policy
+  config/       target, briefing, case, quota, collection-policy and volume
                 configuration, schema-validated
   storage/      document schema, observation snapshots, strict as-of reads,
                 the synthetic evidence ledger and the quota ledger
   collectors/   metered client (every call debited before it is made), the
-                polling schedule and replay visibility under policy P
-                (synthetic only; no source adapter)
+                polling schedule and replay visibility under policy P, and
+                the calculated quota cost of P (synthetic only; no source
+                adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   backtest/     locked surge registration and per-cell positive counts
@@ -349,9 +350,9 @@ recorded responses, and is not yet wired into the as-of reader. See the
 
 The command costs policy P on its own schedule against assumed volumes and the
 quota reservations: discovery and polls against the live reservation, and the
-days of retrieval one history-year needs. Every figure is calculated; channels,
-videos per day and threads per video are fictional assumptions until a live run
-measures them. An overrun of the live reservation is stated, never absorbed by
+days of retrieval one history-year needs, with threads lost to the page cap or
+posted after the last poll age. Every figure is calculated; channels, videos per
+day and thread strata are fictional assumptions until a live run measures them. An overrun of the live reservation is stated, never absorbed by
 the buffer. See the [cost-projection design](docs/superpowers/specs/2026-10-02-cost-projection.md).
 
 ## Generate a synthetic briefing

@@ -1169,13 +1169,18 @@ on its own schedule; the `cost` command writes the report. Design:
 
 | Named test in `tests/collectors/test_cost.py` | Verified contract |
 | --- | --- |
-| `test_shipped_projection_matches_documented_arithmetic` | 240 discovery and 3,600 poll units, 3,840 against 6,000; 661,380 units and 221 days per history-year, as in BACKTEST §B |
+| `test_shipped_projection_matches_documented_arithmetic` | 240 discovery and 3,600 poll units, 3,840 against 6,000; 661,380 units and 221 days per history-year (BACKTEST §B: about 220, from 220.46 rounded down) |
 | `test_projection_uses_the_registered_schedule` | With 12-hour discovery and ages of 1 and 6 hours, coalescing gives 1.5 polls per video and 900 poll units |
 | `test_every_call_costs_a_page_even_when_nothing_is_new` | Four polls with no new threads still cost a unit each; a channel with no new videos still costs a discovery page per tick |
-| `test_page_cap_bounds_poll_cost_and_reports_lost_threads` | 2,500 new threads at the first poll cost 10 pages and lose 1,500 threads per video |
+| `test_page_cap_bounds_poll_cost_and_reports_lost_threads` | 2,500 new threads at the first poll cost 10 pages and lose 1,500 threads per video; 500 at a later poll cost 6 pages |
+| `test_later_polls_read_one_page_past_their_new_threads` | 100 new threads cost one page at the first poll and two at a later one |
+| `test_heavy_tail_is_costed_by_stratum_not_by_mean` | With 5% of videos at 5,000 threads, polls average 7.7 pages per video and lose 37,500 threads a day |
+| `test_threads_after_the_last_poll_age_are_reported` | A last share of 0.8 leaves 36,000 threads a day never observed live |
+| `test_playlist_ceiling_warns_when_a_history_year_is_unreachable` | At 60 videos per channel-day, 333 days are reachable and the report warns |
+| `test_ceiling_division_is_exact_for_large_values` | Day counts use exact integer ceiling division |
 | `test_live_overrun_is_reported_not_hidden` | 200 channels need 12,800 live units; the report states an overrun of 6,800 |
 | `test_missing_retrieval_reservation_is_reported` | A zero retrieval reservation is stated, not divided by |
-| `test_invalid_volume_assumptions_are_refused`, `test_shares_must_match_poll_ages` | Nine invalid assumption files and a share list of the wrong length are refused |
+| `test_invalid_volume_assumptions_are_refused`, `test_shares_must_match_poll_ages` | Twelve invalid assumption files and a share list of the wrong length are refused |
 | `test_report_labels_every_figure_calculated` | The report is byte-identical across runs, labels figures calculated, marks four rows assumed and carries the three input digests |
 | `test_cost_command_writes_report_and_refuses_overwrite` | The command writes once, refuses to replace without `--overwrite` and refuses a non-Markdown output |
 
@@ -1185,5 +1190,19 @@ page cap ignored, no minimum page per poll or per discovery call, shares read as
 cumulative, the schedule bypassed, retrieval days rounded down, an overrun hidden,
 lost threads ignored, retrieval playlist pages dropped, share length unchecked and
 decreasing shares accepted. The minimum-page mutation first survived; the
-nothing-new test was added for it. 548 Python tests passed with 96% line and
-branch coverage; ruff check and format passed.
+nothing-new test was added for it.
+
+A high-effort review of the first commit raised nine points. Fixed: costing on
+the mean thread count understated pages and lost threads for a heavy tail, so
+threads are now strata; a later poll was charged one page short of the page that
+holds its stop thread; threads after the last poll age were neither costed nor
+reported; retrieval days used float division; the playlist item ceiling of
+BACKTEST §D.6 was ignored; the 221-day figure was presented as identical to
+BACKTEST's "about 220"; the README map omitted the new modules; and the report
+carried digests copied beside the objects they came from. Not changed: the
+projection still iterates every publication minute of a discovery interval
+(1,440 schedules at most, milliseconds), because a closed form would duplicate
+the scheduler's coalescing rule; and the share-length check stays explicit for
+its message. Fifteen mutations of the revised code each fail at least one test.
+556 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.

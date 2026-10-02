@@ -2,8 +2,9 @@
 
 Live polls are costed on the registered schedule itself: the poll jobs of a video
 are averaged over every publication minute of one discovery interval, so
-coalescing at discovery is counted exactly as the collector would run it. Every
-figure is calculated; none is measured.
+coalescing at discovery is counted exactly as the collector would run it. Each
+thread stratum is costed separately, because page counts and the page cap are
+not linear in the number of threads. Every figure is calculated; none is measured.
 """
 
 import math
@@ -14,7 +15,7 @@ from fractions import Fraction
 from sentira.collectors.policy import discovery_time, poll_jobs
 from sentira.config.collection import CollectionPolicy
 from sentira.config.quota import QuotaPolicy
-from sentira.config.volume import VolumeAssumptions
+from sentira.config.volume import VolumeAssumptions, exact_share
 
 DISCOVERY_ENDPOINT = "playlistItems.list"
 THREADS_ENDPOINT = "commentThreads.list"
@@ -26,53 +27,65 @@ ANCHOR = datetime(2030, 1, 1, tzinfo=UTC)
 @dataclass(frozen=True, slots=True)
 class Projection:
     policy: CollectionPolicy
+    quota: QuotaPolicy
     volume: VolumeAssumptions
-    policy_sha256: str
-    quota_sha256: str
-    volume_sha256: str
     videos_per_day: int
     discovery_units: int
     poll_pages_per_video: Fraction
     poll_units: int
     live_units: int
-    live_reservation: int
     lost_threads_per_day: int
+    unpolled_threads_per_day: int
     retrieval_units_per_history_year: int
-    retrieval_reservation: int
     retrieval_days_per_history_year: int | None
-    survival_reservation: int
-    buffer_reservation: int
+    reachable_history_days: int | None
 
 
-def _pages(threads, page_size, cap=None):
-    # Every call returns at least one page, even when nothing is new.
-    pages = max(1, math.ceil(threads / page_size))
-    return pages if cap is None else min(cap, pages)
+def ceil_divide(numerator, denominator):
+    """Exact ceiling of a quotient of integers or fractions, without floats."""
+    return -(-numerator // denominator)
 
 
-def _poll_cost(policy, volume):
-    """Average pages and lost threads per video over one discovery interval."""
-    shares = dict(
-        zip(
-            policy.poll_ages_hours,
-            (Fraction(str(value)) for value in volume.cumulative_share_by_age),
-            strict=True,
-        )
-    )
-    limit = policy.per_poll_limit
+def _listing_pages(items, page_size):
+    # A listing call returns a page even when it holds nothing.
+    return max(1, ceil_divide(items, page_size))
+
+
+def _poll_pages(new, page_size, cap, *, first):
+    """Pages one poll spends on `new` threads, within the page cap.
+
+    The first poll of a video stops when the listing ends. A later poll stops on
+    reaching the newest thread already seen, which it finds only on the page that
+    holds it, so it reads one page past its whole pages of new threads.
+    """
+    pages = _listing_pages(new, page_size) if first else new // page_size + 1
+    return min(cap, pages)
+
+
+def _schedules(policy):
+    """For every publication minute of one discovery interval, each job's last age."""
     minutes = policy.discovery_interval_hours * 60
-    pages = lost = Fraction(0)
+    schedules = []
     for minute in range(minutes):
         published = ANCHOR + timedelta(minutes=minute)
+        jobs = poll_jobs(policy, published, discovered_at=discovery_time(policy, published))
+        schedules.append([job.ages_hours[-1] for job in jobs])
+    return schedules
+
+
+def _poll_cost(policy, schedules, shares, threads):
+    """Average pages and lost threads per video with `threads` threads."""
+    limit = policy.per_poll_limit
+    pages = lost = Fraction(0)
+    for ages in schedules:
         seen = Fraction(0)
-        for job in poll_jobs(policy, published, discovered_at=discovery_time(policy, published)):
+        for index, age in enumerate(ages):
             # Shares are registered at poll ages; a coalesced job reaches its last age.
-            reached = shares[job.ages_hours[-1]]
-            new = (reached - seen) * volume.threads_per_video
-            seen = reached
-            pages += _pages(new, policy.page_size, policy.page_cap)
+            new = (shares[age] - seen) * threads
+            seen = shares[age]
+            pages += _poll_pages(new, policy.page_size, policy.page_cap, first=index == 0)
             lost += max(Fraction(0), new - limit)
-    return pages / minutes, lost / minutes
+    return pages / len(schedules), lost / len(schedules)
 
 
 def project(policy, quota, volume):
@@ -84,42 +97,54 @@ def project(policy, quota, volume):
         raise ValueError("Validated policy, quota and volume inputs are required")
     if len(volume.cumulative_share_by_age) != len(policy.poll_ages_hours):
         raise ValueError("One cumulative share is required per poll age")
-    listing, threads = quota.cost(DISCOVERY_ENDPOINT), quota.cost(THREADS_ENDPOINT)
+    listing, threads_cost = quota.cost(DISCOVERY_ENDPOINT), quota.cost(THREADS_ENDPOINT)
     videos_per_day = volume.channels * volume.videos_per_channel_day
+    shares = {
+        age: exact_share(value)
+        for age, value in zip(policy.poll_ages_hours, volume.cumulative_share_by_age, strict=True)
+    }
+    never_polled = 1 - shares[policy.poll_ages_hours[-1]]
 
     ticks = 24 // policy.discovery_interval_hours
     per_tick = Fraction(volume.videos_per_channel_day, ticks)
-    discovery = volume.channels * ticks * _pages(per_tick, volume.playlist_page_size) * listing
+    discovery = (
+        volume.channels * ticks * _listing_pages(per_tick, volume.playlist_page_size) * listing
+    )
 
-    pages_per_video, lost_per_video = _poll_cost(policy, volume)
-    polls = math.ceil(videos_per_day * pages_per_video * threads)
-    live = discovery + polls
+    schedules = _schedules(policy)
+    pages_per_video = lost_per_video = unpolled_per_video = Fraction(0)
+    retrieval_pages_per_video = Fraction(0)
+    for weight, threads in volume.thread_strata:
+        weight = exact_share(weight)
+        pages, lost = _poll_cost(policy, schedules, shares, threads)
+        pages_per_video += weight * pages
+        lost_per_video += weight * lost
+        unpolled_per_video += weight * never_polled * threads
+        # Retrieval reads every thread of a video, at least one page each.
+        retrieval_pages_per_video += weight * _listing_pages(threads, policy.page_size)
+    polls = math.ceil(videos_per_day * pages_per_video * threads_cost)
 
-    # Retrieval pages every thread of every video, then enumerates the playlists.
     videos_per_year = videos_per_day * DAYS_PER_YEAR
-    retrieval = videos_per_year * _pages(volume.threads_per_video, policy.page_size) * threads
     channel_year = volume.videos_per_channel_day * DAYS_PER_YEAR
-    retrieval += volume.channels * _pages(channel_year, volume.playlist_page_size) * listing
+    retrieval = math.ceil(videos_per_year * retrieval_pages_per_video * threads_cost)
+    retrieval += volume.channels * _listing_pages(channel_year, volume.playlist_page_size) * listing
     reserved = quota.reservation("retrieval")
+    per_day = volume.videos_per_channel_day
 
     return Projection(
         policy=policy,
+        quota=quota,
         volume=volume,
-        policy_sha256=policy.sha256,
-        quota_sha256=quota.sha256,
-        volume_sha256=volume.sha256,
         videos_per_day=videos_per_day,
         discovery_units=discovery,
         poll_pages_per_video=pages_per_video,
         poll_units=polls,
-        live_units=live,
-        live_reservation=quota.reservation("live"),
+        live_units=discovery + polls,
         lost_threads_per_day=math.ceil(videos_per_day * lost_per_video),
+        unpolled_threads_per_day=math.ceil(videos_per_day * unpolled_per_video),
         retrieval_units_per_history_year=retrieval,
-        retrieval_reservation=reserved,
-        retrieval_days_per_history_year=math.ceil(retrieval / reserved) if reserved else None,
-        survival_reservation=quota.reservation("survival"),
-        buffer_reservation=quota.reservation("buffer"),
+        retrieval_days_per_history_year=ceil_divide(retrieval, reserved) if reserved else None,
+        reachable_history_days=volume.playlist_item_ceiling // per_day if per_day else None,
     )
 
 
@@ -129,14 +154,19 @@ def _number(value):
     return f"{int(value):,}"
 
 
+def _percent(value):
+    return f"{float(exact_share(value) * 100):g}%"
+
+
 def render_cost(result):
     """Deterministic Markdown for a cost projection."""
     if type(result) is not Projection:
         raise ValueError("A cost projection is required")
-    policy, volume = result.policy, result.volume
+    policy, quota, volume = result.policy, result.quota, result.volume
     ages = ", ".join(str(age) for age in policy.poll_ages_hours)
     shares = ", ".join(str(value) for value in volume.cumulative_share_by_age)
-    spare = result.live_reservation - result.live_units
+    live_reservation = quota.reservation("live")
+    spare = live_reservation - result.live_units
     if spare >= 0:
         live_result = f"within the live reservation ({spare:,} units spare)"
     else:
@@ -158,9 +188,13 @@ def render_cost(result):
         "| --- | --- |",
         f"| Assumed channels | {volume.channels:,} |",
         f"| Assumed videos per channel-day | {volume.videos_per_channel_day:,} |",
-        f"| Assumed threads per video | {volume.threads_per_video:,} |",
+        *(
+            f"| Assumed thread stratum | {_percent(weight)} of videos at {threads:,} threads |"
+            for weight, threads in volume.thread_strata
+        ),
         f"| Assumed cumulative thread share at ages {ages} h | {shares} |",
         f"| Registered playlist page size | {volume.playlist_page_size} |",
+        f"| Reported playlist item ceiling (unverified) | {volume.playlist_item_ceiling:,} |",
         f"| Policy *P* | discovery every {policy.discovery_interval_hours} h; polls at {ages} h; "
         f"at most {policy.page_cap} pages of {policy.page_size} |",
         "",
@@ -171,18 +205,36 @@ def render_cost(result):
         f"| Live discovery | {result.discovery_units:,} | | |",
         f"| Live polls ({_number(result.poll_pages_per_video)} pages per video, "
         f"{result.videos_per_day:,} videos) | {result.poll_units:,} | | |",
-        f"| Live total | {result.live_units:,} | {result.live_reservation:,} | {live_result} |",
+        f"| Live total | {result.live_units:,} | {live_reservation:,} | {live_result} |",
         f"| Historical retrieval | {result.retrieval_units_per_history_year:,} per "
-        f"history-year | {result.retrieval_reservation:,} | {retrieval_result} |",
-        f"| Survival | not projected | {result.survival_reservation:,} | strata design pending |",
-        f"| Buffer | not counted | {result.buffer_reservation:,} | |",
+        f"history-year | {quota.reservation('retrieval'):,} | {retrieval_result} |",
+        f"| Survival | not projected | {quota.reservation('survival'):,} | strata design pending |",
+        f"| Buffer | not counted | {quota.reservation('buffer'):,} | |",
         "",
-        f"Threads beyond the page cap: {result.lost_threads_per_day:,} per day (calculated).",
+        "## Coverage (calculated)",
+        "",
+        f"- Threads beyond the page cap: {result.lost_threads_per_day:,} per day.",
+        f"- Threads published after the last poll age, never observed live: "
+        f"{result.unpolled_threads_per_day:,} per day.",
+    ]
+    reachable = result.reachable_history_days
+    if reachable is None:
+        lines.append("- No videos are assumed, so the playlist ceiling does not bind.")
+    else:
+        lines.append(
+            f"- History reachable per channel at the reported playlist ceiling: {reachable:,} days."
+        )
+        if reachable < DAYS_PER_YEAR:
+            lines.append(
+                "- **A history-year exceeds the reported playlist ceiling at this volume; "
+                "retrieval beyond it may be impossible.**"
+            )
+    lines += [
         "",
         "## Provenance",
         "",
-        f"- Collection policy `{policy.version}`: `{result.policy_sha256}`",
-        f"- Quota policy: `{result.quota_sha256}`",
-        f"- Volume assumptions `{volume.version}`: `{result.volume_sha256}`",
+        f"- Collection policy `{policy.version}`: `{policy.sha256}`",
+        f"- Quota policy `{quota.version}`: `{quota.sha256}`",
+        f"- Volume assumptions `{volume.version}`: `{volume.sha256}`",
     ]
     return "\n".join(lines) + "\n"
