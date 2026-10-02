@@ -164,9 +164,9 @@ sentira/
   storage/      document schema, observation snapshots, strict as-of reads,
                 the synthetic evidence ledger and the quota ledger
   collectors/   metered client (every call debited before it is made), the
-                polling schedule and replay visibility under policy P, and
-                the calculated quota cost of P (synthetic only; no source
-                adapter)
+                polling schedule and replay visibility under policy P, the
+                calculated quota cost of P and a synthetic end-to-end pilot
+                run (synthetic only; no source adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   backtest/     locked surge registration, per-cell positive counts and the
@@ -376,6 +376,12 @@ pilot cost exceeds the ceiling; it stops matching if any input file changes.
 Without `--locked-at` the system clock is used; a typed time is recorded as
 declared, because offline it is a statement rather than evidence. The example
 values are fictional. See the [pilot-registration design](docs/superpowers/specs/2026-10-02-pilot-registration.md).
+
+A locked pilot can be run end to end against a deterministic synthetic provider
+(`collectors/pilot_run.py`): discovery at the registered ticks, polls on the
+schedule of policy P, retrieval of the history span within its reservation, and a
+clean stop at the pilot ceiling, with every call debited first. Its figures are
+simulated and test the machinery only. See the [pilot-run design](docs/superpowers/specs/2026-10-02-pilot-run.md).
 
 ## Generate a synthetic briefing
 

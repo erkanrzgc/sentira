@@ -1270,3 +1270,37 @@ issuing buy and sell signals is not pursued and is now listed as out of scope in
 CONCEPT. The question whether such output would be regulated investment advice is
 added to the questions for counsel. See ROADMAP, "Operator decisions, 2 October
 2026: markets and the economy". No code changed.
+
+## End-to-end synthetic pilot run, 2026-10-02
+
+Last part of the pilot preparation. `collectors/pilot_run.py` runs a locked pilot
+from collection start to the end of its live window against a deterministic
+synthetic provider, with every call through the metered client and a pilot budget
+for the ceiling. The quota ledger now exposes its policy read-only so the run can
+check it is the locked one. Design:
+[pilot-run design](superpowers/specs/2026-10-02-pilot-run.md).
+
+| Named test in `tests/collectors/test_pilot_run.py` | Verified contract |
+| --- | --- |
+| `test_pilot_refuses_to_start_without_a_valid_lock` | No lock, another quota policy or a start after collection start is refused |
+| `test_no_call_precedes_the_lock_or_discovery` | Every debit is at or after collection start and the lock; every live poll follows its video's discovery tick |
+| `test_ledger_units_equal_pilot_calls` | Debits, provider calls and budget units agree, per purpose too |
+| `test_failed_calls_stay_spent_and_the_run_carries_on` | With every seventh call failing, failed debits equal the counted failures and all attempts are spent |
+| `test_pilot_run_is_deterministic` | The same seed gives an identical report; another seed a different one |
+| `test_executed_cost_matches_projection_on_synthetic_volumes` | Discovery is exactly 3 × 4 × 7 calls; live and retrieval units stay within the projection |
+| `test_pilot_stops_cleanly_at_its_ceiling` | A world with ten times the assumed threads stops at the ceiling with ledger, budget and calls in agreement |
+| `test_report_labels_figures_as_simulated` | The report says the figures are simulated and no platform was contacted, and carries the lock digests |
+
+Simulated for the example pilot (seed 11): 19,099 units spent, 8,965 live against
+a projected 10,752 and 10,134 for retrieval against 10,152; 2,876 poll jobs fell
+after the live window. The first run of the tests found a real fault: on its first
+enumeration the collector walked a channel's whole history instead of stopping at
+collection start, costing two extra pages per channel; listings now stop at the
+boundary. Measured: the tests failed at collection before the module existed;
+nine deliberate mutations each fail at least one test (the ceiling ignored, the
+lock, ledger policy and start checks removed, polls scheduled before discovery,
+which the clock refuses as moving backwards, discovery walking history, failed
+calls not counted, polls run beyond the window and retrieval ignoring the span
+end). The failed-call mutation first survived; the failing-provider test was added.
+608 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.
