@@ -1,6 +1,8 @@
-"""Pilot registration: locked before collection, bound to policy, quota and volume."""
+"""Pilot registration: locked before collection, bound to its frame and inputs."""
 
+import json
 import shutil
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -10,19 +12,24 @@ from sentira.backtest.pilot import (
     load_pilot,
     load_pilot_lock,
     pilot_lock_text,
+    select_sample,
     write_pilot_lock,
 )
 from sentira.cli import main
+from sentira.config.channels import load_channel_frame
 from sentira.config.collection import load_collection_policy
 from sentira.config.quota import load_quota_policy
 from sentira.config.volume import load_volume
 
 ROOT = Path(__file__).resolve().parents[2]
 PILOT = ROOT / "examples/synthetic-pilot.toml"
+FRAME = ROOT / "examples/synthetic-channels.toml"
 POLICY = ROOT / "examples/synthetic-policy.toml"
 QUOTA = ROOT / "examples/synthetic-quota.toml"
 VOLUME = ROOT / "examples/synthetic-volume.toml"
 LOCK = ROOT / "examples/synthetic-pilot.lock"
+PATHS = (PILOT, FRAME, POLICY, QUOTA, VOLUME)
+REGISTERED = datetime(2029, 12, 1, tzinfo=UTC)
 START = datetime(2030, 1, 1, tzinfo=UTC)
 LOCKED_AT = datetime(2029, 12, 15, tzinfo=UTC)
 
@@ -40,19 +47,61 @@ def copy(tmp_path, source, name):
     return target
 
 
-def others():
-    return load_collection_policy(POLICY), load_quota_policy(QUOTA), load_volume(VOLUME)
+def inputs(pilot=None):
+    return (
+        pilot or load_pilot(PILOT),
+        load_channel_frame(FRAME),
+        load_collection_policy(POLICY),
+        load_quota_policy(QUOTA),
+        load_volume(VOLUME),
+    )
+
+
+def lock_text(pilot=None, locked_at=LOCKED_AT):
+    return pilot_lock_text(*inputs(pilot), locked_at=locked_at, source="declared")
 
 
 def test_shipped_pilot_validates_and_lock_verifies():
-    locked = load_pilot_lock(PILOT, POLICY, QUOTA, VOLUME, LOCK)
+    locked = load_pilot_lock(*PATHS, lock_path=LOCK)
     assert locked.pilot.total_channels == 12
-    assert locked.locked_at == LOCKED_AT
-    # 12 channels: 768 live units a day for 14 days, plus 28 days of history.
-    assert locked.projected_units == 768 * 14 + 10_148
+    assert (locked.locked_at, locked.locked_at_source) == (LOCKED_AT, "declared")
+    # 12 channels: 768 live units a day for 14 days, plus 28 days of history:
+    # 3,360 videos at 3 pages and 12 channels at 6 playlist pages.
+    assert locked.projected_units == 768 * 14 + 3360 * 3 + 12 * 6
     assert locked.projected_units <= locked.pilot.quota_ceiling_units
-    text = pilot_lock_text(load_pilot(PILOT), *others(), locked_at=LOCKED_AT)
-    assert text == LOCK.read_text(encoding="utf-8")
+    assert lock_text() == LOCK.read_text(encoding="utf-8")
+
+
+def test_sample_is_fixed_by_seed_and_frozen_frame():
+    pilot, frame = inputs()[:2]
+    sample = dict(select_sample(pilot, frame))
+    assert sample == dict(select_sample(pilot, frame))
+    assert sorted(sample) == ["broadcasters", "institutions", "news-outlets"]
+    types = {channel.id: channel.channel_type for channel in frame.channels}
+    for stratum in pilot.strata:
+        assert len(sample[stratum.name]) == stratum.channels
+        assert {types[item] for item in sample[stratum.name]} == {stratum.channel_type}
+    reseeded = dict(select_sample(replace(pilot, selection_seed=7), frame))
+    assert reseeded != sample
+
+
+def test_channel_added_after_registration_is_never_sampled():
+    pilot, frame = inputs()[:2]
+    # Five institutions exist, but the fifth was added after registration.
+    assert len([c for c in frame.channels if c.channel_type == "institution"]) == 5
+    institutions = dict(select_sample(pilot, frame))["institutions"]
+    assert "synthetic-institution-05" not in institutions
+    assert len(institutions) == 4
+
+
+def test_stratum_needs_enough_candidates(tmp_path):
+    path = copy(tmp_path, PILOT, "pilot.toml")
+    pilot = load_pilot(edit(path, '"broadcaster"\nchannels = 4', '"broadcaster"\nchannels = 9'))
+    with pytest.raises(ValueError, match="candidate"):
+        select_sample(pilot, load_channel_frame(FRAME))
+    other = replace(load_pilot(PILOT), selection_frame_version="another-frame")
+    with pytest.raises(ValueError, match="frame"):
+        select_sample(other, load_channel_frame(FRAME))
 
 
 @pytest.mark.parametrize(
@@ -76,15 +125,10 @@ def test_selection_schema_has_no_place_for_a_counter(tmp_path, old, new):
     [
         ("registered_at = 2029-12-01T00:00:00Z", "registered_at = 2030-01-02T00:00:00Z"),
         ("history_days = 28", "history_days = 91"),
-        (
-            'channels = 4\n\n[[strata]]\nname = "news-outlets"',
-            'channels = 0\n\n[[strata]]\nname = "news-outlets"',
-        ),
-        (
-            'channels = 4\n\n[[strata]]\nname = "news-outlets"',
-            'channels = 53\n\n[[strata]]\nname = "news-outlets"',
-        ),
+        ('"broadcaster"\nchannels = 4', '"broadcaster"\nchannels = 0'),
+        ('"broadcaster"\nchannels = 4', '"broadcaster"\nchannels = 53'),
         ('name = "institutions"', 'name = "broadcasters"'),
+        ('channel_type = "institution"', 'channel_type = "broadcaster"'),
         ('method = "seeded_random"', 'method = "hand_picked"'),
         ("quota_ceiling_units = 30000", "quota_ceiling_units = 0"),
         ('mode = "synthetic"', 'mode = "live"'),
@@ -103,6 +147,11 @@ def test_unknown_adaptation_refused(tmp_path):
     )
     with pytest.raises(ValueError):
         load_pilot(path)
+    pilot = load_pilot(PILOT)
+    # Direct construction keeps one canonical form, so digests cannot differ by order.
+    for adaptations in (pilot.adaptations[::-1], pilot.adaptations[:1] * 2):
+        with pytest.raises(ValueError):
+            replace(pilot, adaptations=adaptations)
 
 
 def test_live_days_cover_latency_measurement(tmp_path):
@@ -112,83 +161,103 @@ def test_live_days_cover_latency_measurement(tmp_path):
         load_pilot(edit(path, "live_days = 7", "live_days = 6"))
 
 
-def test_pilot_lock_refused_after_collection_start():
-    pilot = load_pilot(PILOT)
-    assert pilot_lock_text(pilot, *others(), locked_at=START)
-    with pytest.raises(ValueError, match="before"):
-        pilot_lock_text(pilot, *others(), locked_at=START + timedelta(seconds=1))
+def test_pilot_lock_window_runs_from_registration_to_collection_start():
+    assert lock_text(locked_at=REGISTERED) and lock_text(locked_at=START)
+    with pytest.raises(ValueError, match="before any collection"):
+        lock_text(locked_at=START + timedelta(seconds=1))
+    with pytest.raises(ValueError, match="after registration"):
+        lock_text(locked_at=REGISTERED - timedelta(seconds=1))
 
 
 def test_pilot_lock_refuses_projected_cost_above_ceiling(tmp_path):
     path = copy(tmp_path, PILOT, "pilot.toml")
-    exact = load_pilot(edit(path, "quota_ceiling_units = 30000", "quota_ceiling_units = 20900"))
-    assert pilot_lock_text(exact, *others(), locked_at=LOCKED_AT)
-    short = load_pilot(edit(path, "quota_ceiling_units = 20900", "quota_ceiling_units = 20899"))
+    exact = load_pilot(edit(path, "quota_ceiling_units = 30000", "quota_ceiling_units = 20904"))
+    assert lock_text(exact)
+    short = load_pilot(edit(path, "quota_ceiling_units = 20904", "quota_ceiling_units = 20903"))
     with pytest.raises(ValueError, match="ceiling"):
-        pilot_lock_text(short, *others(), locked_at=LOCKED_AT)
+        lock_text(short)
 
 
 @pytest.mark.parametrize(
-    ("name", "old", "new"),
+    ("index", "old", "new"),
     [
-        ("pilot", "live_days = 14", "live_days = 13"),
-        ("policy", "page_cap = 10", "page_cap = 9"),
-        ("quota", "live = 6000\nretrieval = 3000", "live = 5999\nretrieval = 3001"),
-        ("volume", "threads_per_video = 300", "threads_per_video = 301"),
+        (0, "live_days = 14", "live_days = 13"),
+        (1, 'id = "synthetic-party-03"', 'id = "synthetic-party-04"'),
+        (2, "page_cap = 10", "page_cap = 9"),
+        (3, "live = 6000\nretrieval = 3000", "live = 5999\nretrieval = 3001"),
+        (4, "threads_per_video = 300", "threads_per_video = 301"),
     ],
 )
-def test_changed_policy_quota_or_volume_refused_after_lock(tmp_path, name, old, new):
-    paths = {
-        "pilot": copy(tmp_path, PILOT, "pilot.toml"),
-        "policy": copy(tmp_path, POLICY, "policy.toml"),
-        "quota": copy(tmp_path, QUOTA, "quota.toml"),
-        "volume": copy(tmp_path, VOLUME, "volume.toml"),
-    }
-    order = [paths[key] for key in ("pilot", "policy", "quota", "volume")]
+def test_changed_input_refused_after_lock(tmp_path, index, old, new):
+    paths = [copy(tmp_path, source, f"{index}-{source.name}") for source in PATHS]
     lock = tmp_path / "pilot.lock"
-    write_pilot_lock(*order, lock, locked_at=LOCKED_AT)
-    assert load_pilot_lock(*order, lock).locked_at == LOCKED_AT
-    edit(paths[name], old, new)
+    write_pilot_lock(*paths, lock_path=lock, locked_at=LOCKED_AT, source="declared")
+    assert load_pilot_lock(*paths, lock_path=lock).locked_at == LOCKED_AT
+    edit(paths[index], old, new)
     with pytest.raises(ValueError):
-        load_pilot_lock(*order, lock)
+        load_pilot_lock(*paths, lock_path=lock)
 
 
 @pytest.mark.parametrize(
     ("old", "new"),
     [
-        ('"projected_units": 20900', '"projected_units": 20000'),
+        ('"projected_units": 20904', '"projected_units": 20000'),
+        ('"projected_units": 20904', '"projected_units": 20904.0'),
         ('"locked_at": "2029-12-15T00:00:00+00:00"', '"locked_at": "2030-01-02T00:00:00+00:00"'),
-        ('"schema": 1', '"schema": 2'),
-        ('"schema": 1', '"schema": 1, "note": "x"'),
         ('"locked_at": "2029-12-15T00:00:00+00:00"', '"locked_at": 5'),
+        ('"locked_at_source": "declared"', '"locked_at_source": "trusted"'),
+        ('"synthetic-broadcaster-03"', '"synthetic-broadcaster-02"'),
+        ('"sample": {', '"sample": ["x"], "unused": {'),
+        ('"schema": 1', '"schema": 2'),
+        ('"schema": 1', '"schema": true'),
+        ('"schema": 1', '"schema": 1, "note": "x"'),
     ],
 )
 def test_tampered_lock_record_refused(tmp_path, old, new):
     lock = edit(copy(tmp_path, LOCK, "pilot.lock"), old, new)
     with pytest.raises(ValueError):
-        load_pilot_lock(PILOT, POLICY, QUOTA, VOLUME, lock)
+        load_pilot_lock(*PATHS, lock_path=lock)
 
 
 def test_pilot_lock_never_overwritten(tmp_path):
     lock = tmp_path / "pilot.lock"
-    write_pilot_lock(PILOT, POLICY, QUOTA, VOLUME, lock, locked_at=LOCKED_AT)
+    write_pilot_lock(*PATHS, lock_path=lock, locked_at=LOCKED_AT, source="declared")
     with pytest.raises(FileExistsError):
-        write_pilot_lock(PILOT, POLICY, QUOTA, VOLUME, lock, locked_at=LOCKED_AT)
+        write_pilot_lock(*PATHS, lock_path=lock, locked_at=LOCKED_AT, source="declared")
 
 
-def arguments(output, locked_at="2029-12-15T00:00:00Z"):
+def arguments(output, *extra):
     return [
         "lock-pilot",
-        *("--pilot", str(PILOT), "--policy", str(POLICY)),
-        *("--quota", str(QUOTA), "--volume", str(VOLUME)),
-        *("--locked-at", locked_at, "--output", str(output)),
+        *("--pilot", str(PILOT), "--channels", str(FRAME), "--policy", str(POLICY)),
+        *("--quota", str(QUOTA), "--volume", str(VOLUME), "--output", str(output)),
+        *extra,
     ]
 
 
 def test_lock_pilot_command(tmp_path):
-    output = tmp_path / "pilot.lock"
-    assert main(arguments(output)) == 0
+    output = tmp_path / "new" / "pilot.lock"
+    assert main(arguments(output, "--locked-at", "2029-12-15T00:00:00Z")) == 0
     assert output.read_text(encoding="utf-8") == LOCK.read_text(encoding="utf-8")
-    assert main(arguments(output)) == 1
-    assert main(arguments(tmp_path / "late.lock", "2030-01-02T00:00:00Z")) == 1
-    assert main(arguments(PILOT)) == 1
+    assert main(arguments(output, "--locked-at", "2029-12-15T00:00:00Z")) == 1
+    assert main(arguments(tmp_path / "late.lock", "--locked-at", "2030-01-02T00:00:00Z")) == 1
+    assert main(arguments(PILOT, "--locked-at", "2029-12-15T00:00:00Z")) == 1
+    # Without a declared time the system clock is used and labelled as such. The
+    # example registration lies in the future, so the clock falls before it.
+    assert main(arguments(tmp_path / "early.lock")) == 1
+    earlier = edit(
+        copy(tmp_path, PILOT, "pilot.toml"),
+        "registered_at = 2029-12-01T00:00:00Z",
+        "registered_at = 2020-01-01T00:00:00Z",
+    )
+    frame = copy(tmp_path, FRAME, "channels.toml")
+    text = frame.read_text(encoding="utf-8")
+    frame.write_text(
+        text.replace("added_at = 2029-11-01", "added_at = 2019-11-01"), encoding="utf-8"
+    )
+    system = tmp_path / "system.lock"
+    command = arguments(system)
+    command[command.index(str(PILOT))] = str(earlier)
+    command[command.index(str(FRAME))] = str(frame)
+    assert main(command) == 0
+    assert json.loads(system.read_text(encoding="utf-8"))["locked_at_source"] == "system"

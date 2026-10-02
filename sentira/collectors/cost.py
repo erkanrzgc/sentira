@@ -88,6 +88,24 @@ def _poll_cost(policy, schedules, shares, threads):
     return pages / len(schedules), lost / len(schedules)
 
 
+def retrieval_units(policy, quota, volume, days):
+    """Calculated units to retrieve `days` days of history for every channel.
+
+    Every thread of every video is read, at least one page per video, and each
+    channel's upload playlist is enumerated over the span, at least one page.
+    """
+    listing, threads_cost = quota.cost(DISCOVERY_ENDPOINT), quota.cost(THREADS_ENDPOINT)
+    pages_per_video = sum(
+        exact_share(weight) * _listing_pages(threads, policy.page_size)
+        for weight, threads in volume.thread_strata
+    )
+    per_channel = volume.videos_per_channel_day * days
+    units = math.ceil(volume.channels * per_channel * pages_per_video * threads_cost)
+    return (
+        units + volume.channels * _listing_pages(per_channel, volume.playlist_page_size) * listing
+    )
+
+
 def project(policy, quota, volume):
     if (
         type(policy) is not CollectionPolicy
@@ -113,21 +131,15 @@ def project(policy, quota, volume):
 
     schedules = _schedules(policy)
     pages_per_video = lost_per_video = unpolled_per_video = Fraction(0)
-    retrieval_pages_per_video = Fraction(0)
     for weight, threads in volume.thread_strata:
         weight = exact_share(weight)
         pages, lost = _poll_cost(policy, schedules, shares, threads)
         pages_per_video += weight * pages
         lost_per_video += weight * lost
         unpolled_per_video += weight * never_polled * threads
-        # Retrieval reads every thread of a video, at least one page each.
-        retrieval_pages_per_video += weight * _listing_pages(threads, policy.page_size)
     polls = math.ceil(videos_per_day * pages_per_video * threads_cost)
 
-    videos_per_year = videos_per_day * DAYS_PER_YEAR
-    channel_year = volume.videos_per_channel_day * DAYS_PER_YEAR
-    retrieval = math.ceil(videos_per_year * retrieval_pages_per_video * threads_cost)
-    retrieval += volume.channels * _listing_pages(channel_year, volume.playlist_page_size) * listing
+    retrieval = retrieval_units(policy, quota, volume, DAYS_PER_YEAR)
     reserved = quota.reservation("retrieval")
     per_day = volume.videos_per_channel_day
 

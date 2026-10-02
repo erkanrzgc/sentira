@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 import tempfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sentira.backtest.measurement import measure, render_measured
@@ -76,8 +76,10 @@ def main(argv=None):
         costing.add_argument(f"--{option}", required=True)
     costing.add_argument("--overwrite", action="store_true")
     piloting = commands.add_parser("lock-pilot", help="Lock a pilot registration once")
-    for option in ("pilot", "policy", "quota", "volume", "locked-at", "output"):
+    for option in ("pilot", "channels", "policy", "quota", "volume", "output"):
         piloting.add_argument(f"--{option}", required=True)
+    # Without it the system clock is used; a declared time is labelled as such.
+    piloting.add_argument("--locked-at")
     args = parser.parse_args(argv)
     if args.command == "lock-pilot":
         return lock_pilot(args)
@@ -235,15 +237,24 @@ def cost(args):
 
 def lock_pilot(args):
     try:
-        names = ("pilot", "policy", "quota", "volume")
+        names = ("pilot", "channels", "policy", "quota", "volume")
         inputs = [Path(getattr(args, name)).resolve() for name in names]
         output = Path(args.output).resolve()
         if output in inputs:
             raise ValueError("Output must be a separate lock file")
-        locked_at = utc(datetime.fromisoformat(args.locked_at))
-        write_pilot_lock(*inputs, output, locked_at=locked_at)
+        if args.locked_at is None:
+            locked_at, source = datetime.now(UTC), "system"
+        else:
+            locked_at, source = utc(datetime.fromisoformat(args.locked_at)), "declared"
+        write_pilot_lock(*inputs, lock_path=output, locked_at=locked_at, source=source)
     except (ValueError, OSError, ArithmeticError):
-        return refused("Pilot lock")
+        print(
+            "Pilot lock refused: check the pilot, channel frame, policy, quota and volume "
+            "files, the lock time against registration and collection start, the projected "
+            "cost against the ceiling, and the output. Existing locks are never replaced.",
+            file=sys.stderr,
+        )
+        return 1
     print("Synthetic pilot lock written.")
     return 0
 

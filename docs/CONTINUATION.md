@@ -1219,17 +1219,21 @@ data from confirmatory test folds is deferred to the v1 step. Design:
 
 | Named test in `tests/backtest/test_pilot.py` | Verified contract |
 | --- | --- |
-| `test_shipped_pilot_validates_and_lock_verifies` | 12 channels; projected 768 × 14 + 10,148 = 20,900 units within 30,000; the lock reproduces byte for byte |
+| `test_shipped_pilot_validates_and_lock_verifies` | 12 channels; projected 768 × 14 + 3,360 × 3 + 12 × 6 = 20,904 units within 30,000; the lock reproduces byte for byte |
+| `test_sample_is_fixed_by_seed_and_frozen_frame` | The same seed and frame draw the same four channels per stratum, each of the stratum's type; another seed draws another sample |
+| `test_channel_added_after_registration_is_never_sampled` | The fifth institution, added after registration, is never drawn |
+| `test_stratum_needs_enough_candidates` | Nine broadcasters from a frame of eight, or another frame version, are refused |
 | `test_selection_schema_has_no_place_for_a_counter` | A subscriber floor in a stratum, a view floor in the selection and a trending flag are refused as unknown fields |
-| `test_invalid_pilots_are_refused` | Registration after collection start, 91 history days, an empty stratum, 61 channels, a duplicate stratum, a hand-picked selection, a zero ceiling and live mode are refused |
-| `test_unknown_adaptation_refused` | An adaptation outside the registered set is refused |
+| `test_invalid_pilots_are_refused` | Registration after collection start, 91 history days, an empty stratum, 61 channels, a duplicate stratum name or channel type, a hand-picked selection, a zero ceiling and live mode are refused |
+| `test_unknown_adaptation_refused` | An adaptation outside the registered set, or an unsorted or repeated list built directly, is refused |
 | `test_live_days_cover_latency_measurement` | Seven live days are accepted, six refused |
-| `test_pilot_lock_refused_after_collection_start` | A lock at collection start is accepted, one second later refused |
-| `test_pilot_lock_refuses_projected_cost_above_ceiling` | A ceiling of 20,900 is accepted, 20,899 refused |
-| `test_changed_policy_quota_or_volume_refused_after_lock` | Changing any of the four input files after locking is refused |
-| `test_tampered_lock_record_refused` | An edited projection, a later lock time, another schema, an extra field or a malformed time is refused |
+| `test_pilot_lock_window_runs_from_registration_to_collection_start` | Locks at registration and at collection start are accepted; one second outside either is refused |
+| `test_pilot_lock_refuses_projected_cost_above_ceiling` | A ceiling of 20,904 is accepted, 20,903 refused |
+| `test_changed_input_refused_after_lock` | Changing any of the five input files after locking is refused |
+| `test_tampered_lock_record_refused` | An edited or fractional projection, a later or malformed lock time, an unknown time source, an edited sample, another or boolean schema and an extra field are refused |
 | `test_pilot_lock_never_overwritten` | A second lock is refused by exclusive creation |
-| `test_lock_pilot_command` | The command reproduces the example lock, refuses to replace it, refuses a late lock and refuses an input as output |
+| `test_lock_pilot_command` | The command creates the output directory, reproduces the example lock, refuses to replace it, a late lock and an input as output, and labels a system-clock lock |
+| `config/test_channels.py` (three tests) | The frame is canonical whatever the file order, dated, and refuses duplicates, counters, naive times, malformed identifiers and live mode |
 
 Measured: the tests failed at collection before the module existed. Ten
 deliberate mutations each fail at least one test: a late lock accepted, the cost
@@ -1237,5 +1241,20 @@ check dropped, the digest check skipped, an unknown adaptation accepted, a short
 live run accepted, registration after collection start accepted, the sample size
 unbounded, the history span left out of the cost, the full channel list costed
 instead of the sample, and an unchecked projected cost. The last first survived;
-the tampered-lock test was added for it. 583 Python tests passed with 96% line and
-branch coverage; ruff check and format and the 14 Node tests passed.
+the tampered-lock test was added for it.
+
+A high-effort review of the first commit raised ten points. Fixed: a seed without
+a frozen frame did not fix the sample, so a channel frame is now registered, its
+digest bound into the lock and the drawn sample recorded; a lock could predate the
+registration it locked; the typed lock time could be backdated, so the system
+clock is now the default and a typed time is recorded as declared; the history
+cost was scaled from a history-year and fell 4 units short of the span's own
+retrieval; the lock writer failed without an existing output directory, as did the
+main registration's; boolean and fractional lock fields passed the tamper check;
+adaptations built directly could differ by order; the command's refusal named a
+series it does not read; and the pilot loader duplicated the registration's TOML
+reader. Not changed: the projection is computed twice per lock, once to record and
+once to verify (milliseconds). Twenty-one mutations of the revised code each fail
+at least one test; the frame-order mutation first survived and a test was added.
+600 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.

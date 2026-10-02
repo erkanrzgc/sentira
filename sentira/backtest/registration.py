@@ -322,6 +322,7 @@ def lock_text(registration, measured):
 
 def write_lock(registration_path, measured_path, lock_path):
     content = lock_text(load_registration(registration_path), load_measured(measured_path))
+    Path(lock_path).parent.mkdir(parents=True, exist_ok=True)
     # Exclusive creation: an existing lock is never replaced.
     with Path(lock_path).open("x", encoding="utf-8", newline="\n") as stream:
         stream.write(content)
