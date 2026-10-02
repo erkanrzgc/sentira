@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sentira.config.quota import POOLS, PURPOSES, QuotaPolicy
+from sentira.core.registration import integer
 from sentira.storage.repository import StorageError, timestamp
 
 OUTCOMES = ("pending", "ok", "failed")
@@ -230,10 +231,21 @@ class QuotaLedger:
     def policy(self):
         return self._policy
 
-    def debits(self):
+    @property
+    def clock(self):
+        return self._clock
+
+    def last_debit_id(self):
+        """The id of the most recent debit, or 0 for an empty ledger."""
+        row = self._connection().execute("SELECT MAX(id) FROM quota_debits").fetchone()
+        return row[0] or 0
+
+    def debits(self, *, after=0):
+        """Debits in order, optionally only those after a given debit id."""
         rows = self._connection().execute(
             "SELECT id, quota_day, purpose, pool, endpoint, units, debited_at, policy_sha256, "
-            "outcome FROM quota_debits ORDER BY id"
+            "outcome FROM quota_debits WHERE id > ? ORDER BY id",
+            (integer(after, 0, 2**63 - 1),),
         )
         return tuple(
             Debit(*row[:6], datetime.fromisoformat(row[6]), *row[7:]) for row in rows.fetchall()
