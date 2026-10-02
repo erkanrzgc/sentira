@@ -8,7 +8,6 @@ registered first. Every assignment carries the digest of the taxonomy it used.
 
 import re
 from dataclasses import dataclass
-from functools import lru_cache
 
 from sentira.config.taxonomy import Taxonomy
 from sentira.core.document import DocumentKind
@@ -24,38 +23,43 @@ class Assignment:
     taxonomy_sha256: str
 
 
-@lru_cache(maxsize=8)
-def _index(topics):
-    """Whole words and stems to their topic's position; the taxonomy forbids overlaps."""
-    words, stems = {}, {}
-    for position, topic in enumerate(topics):
-        for keyword in topic.keywords:
-            if keyword.endswith("*"):
-                stems[keyword[:-1]] = position
-            else:
-                words[keyword] = position
-    shortest = min((len(stem) for stem in stems), default=0)
-    return words, stems, shortest
+def _matcher(taxonomy):
+    """Build the keyword index once; the taxonomy forbids overlapping keywords."""
+    if type(taxonomy) is not Taxonomy:
+        raise ValueError("A validated taxonomy is required")
+    positions = {
+        keyword: position
+        for position, topic in enumerate(taxonomy.topics)
+        for keyword in topic.keywords
+    }
+    lengths = sorted({len(keyword) - 1 for keyword in positions if keyword.endswith("*")})
+    ids = tuple(topic.id for topic in taxonomy.topics)
+
+    def match(text):
+        matched = set()
+        for word in set(WORD.findall(taxonomy.normalise(text))):
+            if word in positions:
+                matched.add(word)
+            # At most one stem can cover a word, so the first hit is the only one.
+            for length in lengths:
+                if length > len(word):
+                    break
+                if word[:length] + "*" in positions:
+                    matched.add(word[:length] + "*")
+                    break
+        # Distinct keywords count, not the words that matched them.
+        counts = [0] * len(ids)
+        for keyword in matched:
+            counts[positions[keyword]] += 1
+        best = max(range(len(ids)), key=lambda position: (counts[position], -position))
+        return ids[best] if counts[best] else None
+
+    return match
 
 
 def assign(text, taxonomy):
     """The single topic of a text, or None when no keyword matches."""
-    if type(taxonomy) is not Taxonomy:
-        raise ValueError("A validated taxonomy is required")
-    words, stems, shortest = _index(taxonomy.topics)
-    matched = set()
-    for word in set(WORD.findall(taxonomy.normalise(text))):
-        if word in words:
-            matched.add((words[word], word))
-        for length in range(shortest, len(word) + 1) if stems else ():
-            stem = word[:length]
-            if stem in stems:
-                matched.add((stems[stem], stem + "*"))
-    counts = [0] * len(taxonomy.topics)
-    for position, _ in matched:
-        counts[position] += 1
-    best = max(range(len(counts)), key=lambda position: (counts[position], -position))
-    return taxonomy.topics[best].id if counts[best] else None
+    return _matcher(taxonomy)(text)
 
 
 def assign_visible(result, taxonomy, *, expected_sha256):
@@ -65,8 +69,9 @@ def assign_visible(result, taxonomy, *, expected_sha256):
     sha256 = taxonomy.sha256
     if sha256 != expected_sha256:
         raise ValueError("The taxonomy does not match its registered digest")
+    match = _matcher(taxonomy)
     return tuple(
-        Assignment(document.doc_hash, assign(document.text, taxonomy), sha256)
+        Assignment(document.doc_hash, match(document.text), sha256)
         for document in result.documents
         if document.kind is DocumentKind.UTTERANCE
     )

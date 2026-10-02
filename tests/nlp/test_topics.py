@@ -20,6 +20,8 @@ def test_single_label_priority_rule_deterministic():
     assert assign("valtor prensek sentavo", TAXONOMY) == "economy"
     assert assign("valtor sentavo kirumel", TAXONOMY) == "health"
     assert assign("prensek prensek prensek sentavo kirumel", TAXONOMY) == "health"
+    # Two words under one stem are still one keyword.
+    assert assign("valtoruna valtorek sentavo kirumel", TAXONOMY) == "health"
     # A tie goes to the topic registered first.
     assert assign("sentavo prensek", TAXONOMY) == "economy"
     assert assign("mardeck anselm", TAXONOMY) == "social-security"

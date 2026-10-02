@@ -100,6 +100,9 @@ def test_draw_refuses_duplicates_foreign_digests_and_unknown_topics():
     rows = candidates()
     with pytest.raises(ValueError, match="once"):
         draw([*rows, replace(rows[0], stratum="none")])
+    # A copy outside the drawn span is refused as well: the input is inconsistent.
+    with pytest.raises(ValueError, match="once"):
+        draw([*rows, replace(rows[0], published_at=ORIGIN + timedelta(days=9))])
     with pytest.raises(ValueError, match="another taxonomy"):
         draw([*rows[1:], replace(rows[0], taxonomy_sha256="0" * 64)])
     # Candidates consistent with an unregistered taxonomy are refused too.
@@ -111,6 +114,46 @@ def test_draw_refuses_duplicates_foreign_digests_and_unknown_topics():
         draw([*rows[1:], replace(rows[0], assigned="econmy")])
     with pytest.raises(ValueError):
         draw(taxonomy=None)
+
+
+def test_draw_validates_itself():
+    audit = draw()
+    assert replace(audit) == audit
+    first = audit.items[0].audit_id
+    foreign = replace(audit.key[first], taxonomy_sha256="0" * 64)
+    changed = replace(TAXONOMY, version="synthetic-taxonomy-2")
+    for bad in (
+        {"key": {**audit.key, first: foreign}},
+        {"taxonomy": changed},
+        {"population": {"negative": 10, "none": 10}},
+        {"population": {**audit.population, "positive": 3}},
+        {"items": audit.items[1:]},
+        {"items": (replace(audit.items[0], text="other"), *audit.items[1:])},
+        {"mode": "exploratory"},
+        {"taxonomy": None},
+        {"key": list(audit.key.values())},
+        {"per_stratum": 0},
+    ):
+        with pytest.raises(ValueError):
+            replace(audit, **bad)
+    # A hand-built key cannot hold one document twice.
+    same = [i.audit_id for i in audit.items if audit.key[i.audit_id].stratum == "positive"]
+    key = {**audit.key, same[1]: audit.key[same[0]]}
+    items = tuple(AuditItem(audit_id, candidate.text) for audit_id, candidate in key.items())
+    with pytest.raises(ValueError, match="once"):
+        replace(audit, key=key, items=items)
+    # Topics and digest come from the taxonomy, so neither can be edited apart.
+    assert audit.topics == tuple(topic.id for topic in TAXONOMY.topics)
+    with pytest.raises(TypeError):
+        replace(audit, topics=(*audit.topics, "typo"))
+
+
+def test_empty_audit_is_refused():
+    late = ORIGIN + timedelta(days=365)
+    empty = draw(per_stratum=4, origin=late, mode="confirmatory")
+    assert empty.items == () and dict(empty.population) == {}
+    with pytest.raises(ValueError, match="item"):
+        audit_metrics(empty, {})
 
 
 def test_candidate_carries_the_assignment_digest():

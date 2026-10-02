@@ -1414,3 +1414,33 @@ survived: the registered-digest check, masked by the candidate check, and accura
 whose worked value a wrong rule happened to match; both tests were sharpened.
 649 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+A second high-effort review of the fixes raised nine points, all fixed. An empty
+draw divided by zero; an audit without items is now refused. The draw trusted its
+type alone, so an edited draw could add a topic or misstate the digest; it now
+holds the taxonomy, derives topics and digest from it, and checks candidates,
+strata, sample sizes, items and duplicates on construction. The taxonomy digest in
+the lock constrained nothing by itself; a test now shows a pilot taking the
+expected digest from its lock and refusing a taxonomy edited afterwards. The stem
+check compared every stem with every keyword, 18 seconds at the largest permitted
+taxonomy (*measured*); sorted neighbours now give the same answer in 0.04 seconds
+(*measured*). An earlier-schema lock was reported as missing fields; the schema is
+now read first. The keyword index was hashed on every call and is now built once
+per assignment pass, prefixes are tried only up to the longest stem, shares are
+computed in one pass, and the lock text takes its six inputs by name again. While
+rebuilding the index, two words under one stem were briefly counted as two
+keywords; a test now pins the rule that distinct keywords count.
+
+| Named test | Verified contract |
+| --- | --- |
+| `eval/test_topic_audit.py::test_draw_validates_itself` | A foreign candidate, another taxonomy, a missing or understated stratum, items that do not follow the key, a repeated document, an unknown mode or size are refused; topics cannot be edited apart from the taxonomy |
+| `::test_empty_audit_is_refused` | A draw from an empty span has no report |
+| `nlp/test_topics.py::test_single_label_priority_rule_deterministic` | Now also: two words under one stem count as one keyword |
+| `backtest/test_pilot.py::test_locked_taxonomy_digest_refuses_a_later_edit` | Assignment under the lock's digest refuses an edited taxonomy |
+| `::test_older_lock_schema_is_named` | A schema-1 lock is refused as an unsupported schema; a non-object lock as unreadable |
+
+Thirty mutations of the revised code each fail at least one test. The two
+duplicate checks first survived because each masked the other; a cross-span copy
+and a hand-built key now isolate them.
+654 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.
