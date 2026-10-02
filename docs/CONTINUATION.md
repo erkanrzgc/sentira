@@ -845,3 +845,37 @@ The addendum values are supplied, not computed by registered rules.
 Measured: 423 Python tests passed with 95% combined statement and branch coverage;
 Ruff lint and format passed. All new registration tests failed before the module
 existed. No episode is counted yet; counting is the third step.
+
+## Surge episodes on strict as-of synthetic series, 2026-10-02
+
+Second step of the surge-counting increment. `sentira/series/episodes.py` is a
+pure function over rows with publication and visibility times, a locked
+registration and one grid cell. At each hourly tick it reads only rows visible by
+that tick and applies the §A.2–A.3 definitions: whole-day baseline after a
+burn-in, onset, frozen *b*\*, net excess, *k* with the `k_floor` flag, τ_k,
+overshoot, detected-at-crossing, labels resolved at τ_k + *H*, censoring, the
+current-baseline end rule, the refractory period and the maximum duration.
+
+| Named test in `tests/series/test_episodes.py` | Verified contract |
+| --- | --- |
+| `test_tk_is_first_tick_at_which_asof_series_reaches_k` | τ_k is the first as-of tick at *k*; delayed rows move it later, never earlier |
+| `test_onset_invariant_to_rows_invisible_at_T` | Deleting, delaying or adding rows invisible at *T* leaves three cells unchanged |
+| `test_detected_at_crossing_excluded_from_t1_population` | A lump arriving at 2*k* is flagged and excluded from T1 |
+| `test_unresolved_horizon_is_censored_not_negative` | One hour short of τ_k + *H* is censored; at τ_k + *H* it is negative |
+| `test_resolution_time_is_tk_plus_H_for_both_classes` | Positive and negative both resolve at τ_k + *H*; an earlier crossing does not |
+| `test_level_shift_does_not_extend_episode_past_max_duration` | A permanent level shift ends at 2*H* |
+| `test_episode_ends_after_quiet_period_below_current_baseline` | A quiet day ends an episode before 2*H* |
+| `test_end_rule_uses_current_not_frozen_baseline` | A count above *b*\* but below the current median ends the episode |
+| `test_no_onset_during_refractory_period` | No episode opens within the refractory period |
+| `test_detection_requires_locked_registration_grid_cell_and_hour_bounds` | Unlocked input, off-grid cells and unaligned bounds are refused |
+
+Expected ticks are hand-computed from zero or piecewise-constant synthetic
+backgrounds. Measured: seven deliberate code mutations were tried (ignoring
+visibility, a frozen end baseline, no refractory period, censoring by crossing,
+no `c_min`, no maximum duration); every one now fails at least one test, after
+the refractory test was added for the one that initially survived. 433 Python
+tests passed with 95% combined coverage; Ruff passed.
+
+With a zero baseline the quiet end rule cannot fire, because no count is below
+zero; such episodes end at the maximum duration. This follows the registered
+definition and is recorded here rather than changed.
