@@ -33,3 +33,13 @@ few_negatives_size_multiplier = 2.0
 k_min = 100
 reporting_floor = 50
 week_floor = 20
+
+# Proposed label-free rules for the measured addendum (synthetic development).
+# The confirmatory v1 rules require operator approval before they are locked.
+[surge.measurement]
+c_min_z = 3.0
+k_floor_z = 2.0
+minimum_c_min = 5
+minimum_k_floor = 5
+minimum_half_life_episodes = 3
+horizon_multiple = 3.0

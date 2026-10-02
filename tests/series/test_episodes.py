@@ -1,6 +1,7 @@
 """Surge episodes on strict as-of synthetic series; no collection or network access.
 
-The shipped synthetic registration supplies c_min = 6, k_floor = 10 and H = 72 h.
+The hand-chosen thresholds in tests/fixtures/hand-measured.toml supply c_min = 6,
+k_floor = 10 and H = 72 h with the shipped registration.
 With no background rows the baseline is zero, so c_min and k_floor bind and every
 expected tick below can be checked by hand.
 """
@@ -20,15 +21,8 @@ H = timedelta(hours=72)
 
 
 @pytest.fixture(scope="module")
-def locked():
-    from sentira.backtest.registration import load_locked
-
-    examples = ROOT / "examples"
-    return load_locked(
-        examples / "synthetic-registration.toml",
-        examples / "synthetic-measured.toml",
-        examples / "synthetic-registration.lock",
-    )
+def locked(hand_locked):
+    return hand_locked
 
 
 def rows(first, hours, per_hour, *, visible_at=None):
@@ -210,8 +204,9 @@ def test_trailing_window_scales_daily_baseline(locked, tmp_path):
         encoding="utf-8",
     )
     lock = tmp_path / "registration.lock"
-    write_lock(registration, examples / "synthetic-measured.toml", lock)
-    twelve = load_locked(registration, examples / "synthetic-measured.toml", lock)
+    measured = ROOT / "tests/fixtures/hand-measured.toml"
+    write_lock(registration, measured, lock)
+    twelve = load_locked(registration, measured, lock)
     # b = 24 a day, so a 12-hour window expects 12 rows and m = 2 needs 24. At
     # three rows an hour the 12-hour count is 12 + 2h, reaching 24 at 06:00.
     observations = rows(START, 28 * 24, 1) + rows(DAY, 48, 3)

@@ -964,3 +964,41 @@ has 3 positives and 3 negatives in the test span across 3 folds, and 2 positives
 and 4 negatives before *O*1: far below *K*min, so "not backtestable", a fixture
 property and not a feasibility finding. The measured addendum is still supplied;
 computing it by registered rules is the next step.
+
+## Measured addendum computed by registered rules, 2026-10-02
+
+The measured addendum is no longer supplied. `sentira/backtest/measurement.py`
+computes it from rows published in [*D*0, *O*1) and visible at *O*1: `c_min` and
+`k_floor` from the median and MAD of the pooled pre-origin hourly volumes, then
+episodes under those thresholds, then the median excess half-life and hence *H*.
+The addendum records the pre-origin digest and its intermediate statistics.
+`measure` refuses a series that does not reach *O*1 and never replaces an
+addendum; `lock` never replaces a lock; `count` recomputes the addendum from the
+counted series and refuses any difference. Hand-computed tests now use
+`tests/fixtures/hand-measured.toml`, kept separate from the computed example.
+
+| Named test in `tests/backtest/test_measurement.py` | Verified contract |
+| --- | --- |
+| `test_c_min_and_k_floor_follow_registered_rule` | Median 2, MAD 1 give `c_min` 70 and `k_floor` 15 (hand-computed); an empty series falls back to the registered minimums |
+| `test_half_life_recovered_on_synthetic_decay` | Decays with half-lives of 6 h and 20 h are recovered within one hour and map to *H* = 24 and 72 h |
+| `test_half_life_counts_from_last_peak_to_half_inclusive` | The last peak and an inclusive half threshold are used; a flat episode has no half-life |
+| `test_horizon_is_smallest_registered_value_covering_the_multiple` | 8 h maps to 24 h and 9 h to 72 h; too few half-lives give 168 h |
+| `test_addendum_invariant_to_rows_after_first_origin` | Rows published at or after *O*1, or visible only after it, leave the addendum unchanged |
+| `test_addendum_refused_until_preorigin_span_complete` | A series ending one hour before *O*1, or starting after *D*0, is refused |
+| `test_count_refuses_when_preorigin_data_differs_from_measurement` | An added pre-origin segment, or a hand-edited and relocked `c_min`, is refused |
+| `test_shipped_measured_addendum_reproduces` | The shipped addendum equals the computation and its rendering byte for byte |
+| `test_measure_lock_count_workflow` | `measure`, `lock` and `count` succeed in order; repeated measure and lock refuse to overwrite |
+
+The rules are a proposal for synthetic development: §A.3 names the inputs but not
+the formulae, so confirmatory rules need operator approval before v1. λ and the
+MDE are not computed. For the example series the addendum is median 1, MAD 1,
+`c_min` 46, `k_floor` 15, four half-lives with a median of 1 hour (its bursts are
+step functions) and *H* = 24 hours (calculated by the registered rules from
+synthetic data). The example report then has 2 positives and 2 negatives in the
+test span of the primary cell.
+
+Measured: the measurement tests failed at collection before the module existed;
+seven deliberate mutations (no recomputation in `count`, an unscaled MAD, the first
+instead of the last peak, a strict half threshold, a strict horizon threshold,
+admitting rows published at *O*1 and no completeness check) each fail at least one
+test. Two `count` runs on the example produced identical bytes.

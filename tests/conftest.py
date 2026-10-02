@@ -2,8 +2,12 @@
 
 import socket
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+HAND_MEASURED = ROOT / "tests/fixtures/hand-measured.toml"
 
 
 @pytest.fixture(autouse=True)
@@ -56,3 +60,14 @@ def document(fields):
     from sentira.core.document import Document
 
     return Document(**fields)
+
+
+@pytest.fixture(scope="session")
+def hand_locked(tmp_path_factory):
+    """The shipped registration with hand-chosen thresholds: c_min 6, k_floor 10, H 72 h."""
+    from sentira.backtest.registration import load_locked, write_lock
+
+    registration = ROOT / "examples/synthetic-registration.toml"
+    lock = tmp_path_factory.mktemp("hand") / "registration.lock"
+    write_lock(registration, HAND_MEASURED, lock)
+    return load_locked(registration, HAND_MEASURED, lock)

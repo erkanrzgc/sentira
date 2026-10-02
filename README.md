@@ -283,7 +283,17 @@ that a real entity qualifies. See [current limits](docs/CONTINUATION.md).
 
 ## Count surges in a synthetic series
 
+The measured addendum is computed once from the pre-origin span and locked with the
+registration before counting. The example files are already measured and locked;
+to repeat the first two steps, write to new paths:
+
 ```powershell
+./.venv/Scripts/python.exe -m sentira.cli measure `
+  --registration examples/synthetic-registration.toml `
+  --series examples/synthetic-series.toml --output out/measured.toml
+./.venv/Scripts/python.exe -m sentira.cli lock `
+  --registration examples/synthetic-registration.toml `
+  --measured out/measured.toml --output out/registration.lock
 ./.venv/Scripts/python.exe -m sentira.cli count `
   --registration examples/synthetic-registration.toml `
   --measured examples/synthetic-measured.toml `
@@ -297,9 +307,10 @@ and detected-at-crossing episodes for every registered grid cell, separately for
 the test span from the first origin and for the pre-origin span, which is never a
 test fold. It applies the registered primary-and-fallback rule to the test span
 only and stamps both registration digests into the report. The fictional example is far below *K*min and is reported as not
-backtestable. The measured addendum is supplied rather than computed, topic
-assignment and integrity screens are not implemented, and visibility is strict
-observation time only. See the [surge-counting design](docs/superpowers/specs/2026-10-02-surge-counting.md).
+backtestable. Counting recomputes the measured addendum from the series and
+refuses any difference. The measurement rules are a proposal for synthetic
+development; topic assignment and integrity screens are not implemented, and
+visibility is strict observation time only. See the [surge-counting design](docs/superpowers/specs/2026-10-02-surge-counting.md).
 
 ## Generate a synthetic briefing
 

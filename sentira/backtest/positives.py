@@ -7,6 +7,7 @@ claim about real discourse.
 from dataclasses import dataclass
 from datetime import timedelta
 
+from sentira.backtest.measurement import measure
 from sentira.backtest.registration import Cell, LockedRegistration
 from sentira.series.episodes import detect_grid
 
@@ -91,9 +92,12 @@ def count_grid(series, locked, *, start, end, cells=None):
 
 
 def count_series(series, locked):
-    """Count a synthetic series that starts at the registered history start D0."""
+    """Count a synthetic series whose pre-origin span reproduces the locked addendum."""
     if series.start != locked.registration.walk_forward.history_start:
         raise ValueError("The series must start at the registered history start")
+    # The addendum must be exactly what the registered rules give for this data.
+    if measure(series, locked.registration) != locked.measured:
+        raise ValueError("The measured addendum does not reproduce from the pre-origin span")
     return count_grid(series.topics, locked, start=series.start, end=series.end)
 
 
