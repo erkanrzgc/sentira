@@ -87,8 +87,10 @@ def test_half_life_recovered_on_synthetic_decay(registration, half_life, horizon
 
     measured = measure(series({"decay": decaying(half_life, BURSTS)}), registration)
     assert measured.half_life_episodes == len(BURSTS)
-    # Hourly buckets start at onset, one hour after the first burst hour.
-    assert abs(measured.half_life_hours - half_life) <= 1
+    # The excess series includes the hour that opened the episode, so the peak
+    # of 80 rows is seen and the first hour at or below 40 is exactly one
+    # half-life later.
+    assert measured.half_life_hours == half_life
     assert measured.horizon_hours == horizon
     assert (measured.c_min, measured.k_floor) == (5, 5)
 
@@ -167,6 +169,7 @@ def test_measure_lock_count_workflow(tmp_path):
     # A measured addendum is written once; it is never replaced in place.
     assert main([*measure, "--output", str(measured)]) == 1
     locking = ["lock", "--registration", str(registration), "--measured", str(measured)]
+    locking += ["--series", str(source)]
     assert main([*locking, "--output", str(lock)]) == 0
     assert main([*locking, "--output", str(lock)]) == 1
     output = tmp_path / "count.md"
@@ -226,9 +229,9 @@ def test_half_life_counts_from_last_peak_to_half_inclusive():
         ended_at=onset + timedelta(hours=len(counts)),
         end_reason="quiet",
     )
-    assert half_life(published, episode, O1) == 2
+    assert half_life(published, episode, O1, trailing_hours=24) == 2
     flat = [onset + timedelta(hours=h, minutes=30) for h in range(5) for _ in range(3)]
-    assert half_life(flat, episode, O1) is None
+    assert half_life(flat, episode, O1, trailing_hours=24) is None
 
 
 def test_horizon_is_smallest_registered_value_covering_the_multiple(registration):
@@ -239,3 +242,52 @@ def test_horizon_is_smallest_registered_value_covering_the_multiple(registration
     assert select_horizon([8, 9, 9], surge) == (9.0, 72)
     assert select_horizon([60, 60, 60], surge) == (60.0, 168)
     assert select_horizon([1, 1], surge) == (None, 168)
+
+
+def test_half_life_includes_the_hour_that_opened_the_episode():
+    from sentira.backtest.measurement import half_life
+    from sentira.series.episodes import Episode
+
+    onset = D0 + timedelta(days=40)
+    # A spike of 100 rows in the hour before onset, then 40 and 10: the peak is
+    # the spike, and the next hour is already below half of it.
+    hours = {-1: 100, 0: 40, 1: 10}
+    published = [onset + timedelta(hours=h, minutes=30) for h, n in hours.items() for _ in range(n)]
+    episode = Episode(
+        onset_at=onset,
+        baseline=0.0,
+        k=10.0,
+        k_floor_binds=True,
+        tau_k=None,
+        overshoot=None,
+        detected_at_crossing=False,
+        crossed_2k_at=None,
+        resolves_at=None,
+        label="below_k",
+        ended_at=onset + timedelta(hours=3),
+        end_reason="quiet",
+    )
+    assert half_life(published, episode, O1, trailing_hours=24) == 1
+
+
+def test_lock_refuses_addendum_that_does_not_reproduce(tmp_path):
+    registration, source, measured, lock = workflow(tmp_path)
+    hand = ROOT / "tests/fixtures/hand-measured.toml"
+    locking = ["lock", "--registration", str(registration), "--output", str(lock)]
+    assert main([*locking, "--measured", str(hand), "--series", str(source)]) == 1
+    assert not lock.exists()
+    text = source.read_text(encoding="utf-8")
+    source.write_text(text.replace("end = 2030-06-24", "end = 2030-04-28", 1), encoding="utf-8")
+    assert (
+        main(
+            [
+                *locking,
+                "--measured",
+                str(EXAMPLES / "synthetic-measured.toml"),
+                "--series",
+                str(source),
+            ]
+        )
+        == 1
+    )
+    assert not lock.exists()

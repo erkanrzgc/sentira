@@ -8,6 +8,6 @@ hourly_median = 1.0
 hourly_mad = 1.0
 c_min = 46
 k_floor = 15
-half_life_episodes = 4
+half_life_episodes = 5
 half_life_hours = 1.0
 horizon_hours = 24

@@ -191,7 +191,11 @@ class Registration:
             surge=SurgeDefinition.from_mapping(raw["surge"]),
             walk_forward=WalkForward.from_mapping(raw["walk_forward"]),
         )
-        local_start = result.walk_forward.history_start + timedelta(minutes=offset)
+        try:
+            local_start = result.walk_forward.history_start + timedelta(minutes=offset)
+            result.walk_forward.first_origin + timedelta(hours=max(result.surge.horizons_hours))
+        except OverflowError:
+            raise ValueError("Registered times cannot be represented") from None
         if local_start.time() != time(0):
             raise ValueError("The history start must fall on a local midnight")
         if result.walk_forward.burn_in_days < result.surge.baseline_days:
@@ -227,7 +231,7 @@ class Measured:
         if not valid_hash(raw["preorigin_sha256"]):
             raise ValueError("A pre-origin SHA-256 digest is required")
         half_life = raw.get("half_life_hours")
-        if half_life is not None and not nonnegative(half_life):
+        if half_life is not None and nonnegative(half_life) == 0:
             raise ValueError("A measured half-life must be positive")
         return cls(
             mode=raw["mode"],
@@ -242,6 +246,15 @@ class Measured:
             half_life_hours=None if half_life is None else float(half_life),
             horizon_hours=integer(raw["horizon_hours"], 1, 24 * 90),
         )
+
+
+def horizon_for(half_life_hours, surge):
+    """The smallest registered horizon >= multiple x half-life; the largest when none or unknown."""
+    if half_life_hours is None:
+        return max(surge.horizons_hours)
+    floor = surge.measurement.horizon_multiple * half_life_hours
+    eligible = [hours for hours in surge.horizons_hours if hours >= floor]
+    return min(eligible) if eligible else max(surge.horizons_hours)
 
 
 def read_toml(path):
@@ -269,8 +282,14 @@ class LockedRegistration:
             raise ValueError("Validated registration files are required")
         if self.measured.registration_version != self.registration.version:
             raise ValueError("The measured addendum belongs to another registration")
-        if self.measured.horizon_hours not in self.registration.surge.horizons_hours:
+        surge, measured = self.registration.surge, self.measured
+        if measured.horizon_hours not in surge.horizons_hours:
             raise ValueError("The measured horizon must lie in the registered grid")
+        enough = measured.half_life_episodes >= surge.measurement.minimum_half_life_episodes
+        if enough != (measured.half_life_hours is not None):
+            raise ValueError("A half-life is recorded exactly when enough episodes were measured")
+        if measured.horizon_hours != horizon_for(measured.half_life_hours, surge):
+            raise ValueError("The measured horizon does not follow from the half-life")
         if self.registration_sha256 != digest(self.registration):
             raise ValueError("The registration does not match its lock")
         if self.measured_sha256 != digest(self.measured):

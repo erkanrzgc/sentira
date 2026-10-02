@@ -8,15 +8,13 @@ median excess half-life and hence the horizon H.
 
 import math
 from bisect import bisect_left
-from datetime import timedelta
 from statistics import median
 
-from sentira.backtest.registration import Cell, Measured, Registration
+from sentira.backtest.registration import Cell, Measured, Registration, horizon_for
 from sentira.core.registration import digest
-from sentira.series.episodes import Rules, detect_with_rules
+from sentira.series.episodes import HOUR, Rules, detect_with_rules
 from sentira.storage.asof import VisibilityCursor
 
-HOUR = timedelta(hours=1)
 # Scales a median absolute deviation to a normal standard deviation.
 MAD_TO_SIGMA = 1.4826
 
@@ -63,14 +61,19 @@ def ceiling(value):
     return math.ceil(round(value, 9))
 
 
-def half_life(published, episode, origin):
-    """Hours from the last peak of the hourly excess rate to half of that peak."""
+def half_life(published, episode, origin, *, trailing_hours):
+    """Hours from the last peak of the hourly excess rate to half of that peak.
+
+    The series starts with the trailing window that opened the episode, so the
+    hours that triggered onset, often the peak itself, are included.
+    """
+    first = episode.onset_at - trailing_hours * HOUR
     ended = episode.ended_at if episode.ended_at is not None else origin
-    buckets = int((ended - episode.onset_at) / HOUR)
+    buckets = int((ended - first) / HOUR)
     rate = episode.baseline / 24
     excess = []
     for index in range(buckets):
-        low = episode.onset_at + index * HOUR
+        low = first + index * HOUR
         count = bisect_left(published, low + HOUR) - bisect_left(published, low)
         excess.append(count - rate)
     if not excess or max(excess) <= 0:
@@ -84,13 +87,11 @@ def half_life(published, episode, origin):
 
 
 def select_horizon(lives, surge):
-    """H is the smallest registered horizon >= multiple x median half-life, else the largest."""
-    rules = surge.measurement
-    if len(lives) < rules.minimum_half_life_episodes:
-        return None, max(surge.horizons_hours)
+    """H from the median half-life, or the largest horizon with too few half-lives."""
+    if len(lives) < surge.measurement.minimum_half_life_episodes:
+        return None, horizon_for(None, surge)
     half = float(median(lives))
-    eligible = [hours for hours in surge.horizons_hours if hours >= rules.horizon_multiple * half]
-    return half, min(eligible) if eligible else max(surge.horizons_hours)
+    return half, horizon_for(half, surge)
 
 
 def measure(series, registration):
@@ -123,7 +124,10 @@ def measure(series, registration):
         published = [row.published_at for row in topic_rows]
         lives.extend(
             value
-            for value in (half_life(published, episode, origin) for episode in found)
+            for value in (
+                half_life(published, episode, origin, trailing_hours=surge.trailing_hours)
+                for episode in found
+            )
             if value is not None
         )
     half, horizon = select_horizon(lives, surge)

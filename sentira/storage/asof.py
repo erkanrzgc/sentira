@@ -49,13 +49,16 @@ class AsOfResult:
 class VisibilityCursor:
     """The strict observation-time rule for in-memory row streams.
 
-    A row is visible at T exactly when it was observed at or before T, the same
-    predicate AsOfReader applies in SQL; an equivalence test keeps them aligned.
+    A row is visible at T exactly when it was observed at or before T. AsOfReader
+    applies the same predicate in SQL; its additional `updated_at <= T` is implied,
+    because storage refuses a row updated after it was observed. An equivalence
+    test keeps the two implementations aligned.
     """
 
     def __init__(self, rows, *, observed_at):
-        self._observed_at = observed_at
-        self._rows = sorted(rows, key=lambda row: utc(observed_at(row)))
+        keyed = sorted(((utc(observed_at(row)), index, row) for index, row in enumerate(rows)))
+        self._keys = [key for key, _, _ in keyed]
+        self._rows = [row for _, _, row in keyed]
         self._cursor = 0
         self._last = None
 
@@ -66,10 +69,7 @@ class VisibilityCursor:
             raise ValueError("Visibility time cannot move backwards")
         self._last = limit
         first = self._cursor
-        while (
-            self._cursor < len(self._rows)
-            and utc(self._observed_at(self._rows[self._cursor])) <= limit
-        ):
+        while self._cursor < len(self._rows) and self._keys[self._cursor] <= limit:
             self._cursor += 1
         return self._rows[first : self._cursor]
 
