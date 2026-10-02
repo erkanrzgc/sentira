@@ -128,7 +128,7 @@ def count(args):
         counts = count_grid(series.topics, locked, start=series.start, end=series.end)
         content = render_count(locked, series, counts, select_cell(counts, locked))
         write_report(output, content, overwrite=args.overwrite)
-    except (ValueError, OSError):
+    except (ValueError, OSError, ArithmeticError):
         print(
             "Count refused: check the registration lock, series input and output destination. "
             "Existing output requires --overwrite.",

@@ -98,3 +98,42 @@ def test_mutating_and_deleting_invisible_rows_does_not_change_past(tmp_path, clo
             connection.execute("DELETE FROM snapshots WHERE doc_hash=?", ("c" * 64,))
             connection.execute("DELETE FROM documents WHERE doc_hash=?", ("c" * 64,))
         assert AsOfReader(repo).read(at) == original
+
+
+def test_cursor_and_reader_agree_on_visibility(document):
+    import random
+
+    from sentira.storage.asof import VisibilityCursor
+
+    generator = random.Random(11)
+    start = document.published_at
+    rows = []
+    for index in range(120):
+        published = start + timedelta(minutes=generator.randint(0, 3000))
+        observed = published + timedelta(minutes=generator.choice((0, 0, 1, 59, 60, 61, 600)))
+        rows.append(
+            (
+                replace(
+                    document, doc_hash=f"{index:064x}", published_at=published, updated_at=published
+                ),
+                observed,
+            )
+        )
+    rows.sort(key=lambda row: row[1])
+    now = {"value": rows[0][1]}
+    with Repository(":memory:", clock=lambda: now["value"]) as repo:
+        for row, observed in rows:
+            now["value"] = observed
+            repo.ingest(row)
+        reader = AsOfReader(repo)
+        cursor = VisibilityCursor(rows, observed_at=lambda row: row[1])
+        seen = set()
+        checkpoints = sorted({observed for _, observed in rows[::7]})
+        checkpoints += [checkpoints[-1] + timedelta(hours=1)]
+        for at in [start - timedelta(seconds=1), *checkpoints]:
+            seen.update(row.doc_hash for row, _ in cursor.advance(at))
+            assert seen == {d.doc_hash for d in reader.read(at).documents}
+            boundary = at - timedelta(microseconds=1)
+            assert {d.doc_hash for d in reader.read(boundary).documents} <= seen
+        with pytest.raises(ValueError, match="backwards"):
+            cursor.advance(start)
