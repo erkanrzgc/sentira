@@ -169,8 +169,10 @@ sentira/
                 adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
-  backtest/     locked surge registration and per-cell positive counts
-  cli.py        briefing, case-report, measure, lock, count and cost commands
+  backtest/     locked surge registration, per-cell positive counts and the
+                locked pilot registration
+  cli.py        briefing, case-report, measure, lock, count, cost and
+                lock-pilot commands
 ```
 
 Planned, not yet implemented:
@@ -354,6 +356,22 @@ days of retrieval one history-year needs, with threads lost to the page cap or
 posted after the last poll age. Every figure is calculated; channels, videos per
 day and thread strata are fictional assumptions until a live run measures them. An overrun of the live reservation is stated, never absorbed by
 the buffer. See the [cost-projection design](docs/superpowers/specs/2026-10-02-cost-projection.md).
+
+## Lock a pilot registration
+
+```bash
+.venv/bin/python -m sentira.cli lock-pilot \
+  --pilot examples/synthetic-pilot.toml --policy examples/synthetic-policy.toml \
+  --quota examples/synthetic-quota.toml --volume examples/synthetic-volume.toml \
+  --locked-at 2029-12-15T00:00:00Z --output out/pilot.lock
+```
+
+The pilot registration fixes a small stratified sample with a seeded selection,
+the history and live spans, a hard quota ceiling and the only adaptations the
+pilot may make; strata name channel types, and no field can hold a counter. The
+lock is refused after collection starts or when the projected pilot cost exceeds
+the ceiling, and stops matching if the pilot, policy, quota or volume files change.
+The example values are fictional. See the [pilot-registration design](docs/superpowers/specs/2026-10-02-pilot-registration.md).
 
 ## Generate a synthetic briefing
 

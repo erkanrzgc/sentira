@@ -1,0 +1,31 @@
+# Fictional pilot registration (BACKTEST A.9). It fixes the sample, the selection
+# rule, the spans, the quota ceiling and the permitted adaptations before any
+# pilot collection. Strata name channel types only: the schema has no field for a
+# counter, so no selection can depend on audience size or engagement.
+mode = "synthetic"
+version = "synthetic-pilot-1"
+registered_at = 2029-12-01T00:00:00Z
+collection_start = 2030-01-01T00:00:00Z
+history_days = 28
+live_days = 14
+quota_ceiling_units = 30000
+adaptations = ["replace_unreachable_channel_within_stratum", "shorten_history_to_ceiling"]
+
+[selection]
+method = "seeded_random"
+seed = 20300101
+
+[[strata]]
+name = "broadcasters"
+channel_type = "broadcaster"
+channels = 4
+
+[[strata]]
+name = "news-outlets"
+channel_type = "news_outlet"
+channels = 4
+
+[[strata]]
+name = "institutions"
+channel_type = "institution"
+channels = 4

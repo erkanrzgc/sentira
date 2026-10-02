@@ -1206,3 +1206,36 @@ the scheduler's coalescing rule; and the share-length check stays explicit for
 its message. Fifteen mutations of the revised code each fail at least one test.
 556 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+## Locked pilot registration, 2026-10-02
+
+Third part of the pilot preparation. `backtest/pilot.py` validates the pilot
+registration of BACKTEST §A.9 and writes or verifies its lock; `lock-pilot` is the
+command. The lock binds the pilot to the collection policy, quota policy and
+volume assumptions by digest, records the lock time and the projected pilot cost,
+and is refused after collection starts or above the quota ceiling. Excluding pilot
+data from confirmatory test folds is deferred to the v1 step. Design:
+[pilot-registration design](superpowers/specs/2026-10-02-pilot-registration.md).
+
+| Named test in `tests/backtest/test_pilot.py` | Verified contract |
+| --- | --- |
+| `test_shipped_pilot_validates_and_lock_verifies` | 12 channels; projected 768 × 14 + 10,148 = 20,900 units within 30,000; the lock reproduces byte for byte |
+| `test_selection_schema_has_no_place_for_a_counter` | A subscriber floor in a stratum, a view floor in the selection and a trending flag are refused as unknown fields |
+| `test_invalid_pilots_are_refused` | Registration after collection start, 91 history days, an empty stratum, 61 channels, a duplicate stratum, a hand-picked selection, a zero ceiling and live mode are refused |
+| `test_unknown_adaptation_refused` | An adaptation outside the registered set is refused |
+| `test_live_days_cover_latency_measurement` | Seven live days are accepted, six refused |
+| `test_pilot_lock_refused_after_collection_start` | A lock at collection start is accepted, one second later refused |
+| `test_pilot_lock_refuses_projected_cost_above_ceiling` | A ceiling of 20,900 is accepted, 20,899 refused |
+| `test_changed_policy_quota_or_volume_refused_after_lock` | Changing any of the four input files after locking is refused |
+| `test_tampered_lock_record_refused` | An edited projection, a later lock time, another schema, an extra field or a malformed time is refused |
+| `test_pilot_lock_never_overwritten` | A second lock is refused by exclusive creation |
+| `test_lock_pilot_command` | The command reproduces the example lock, refuses to replace it, refuses a late lock and refuses an input as output |
+
+Measured: the tests failed at collection before the module existed. Ten
+deliberate mutations each fail at least one test: a late lock accepted, the cost
+check dropped, the digest check skipped, an unknown adaptation accepted, a short
+live run accepted, registration after collection start accepted, the sample size
+unbounded, the history span left out of the cost, the full channel list costed
+instead of the sample, and an unchecked projected cost. The last first survived;
+the tampered-lock test was added for it. 583 Python tests passed with 96% line and
+branch coverage; ruff check and format and the 14 Node tests passed.
