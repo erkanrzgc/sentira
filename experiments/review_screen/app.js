@@ -48,7 +48,7 @@
   el('next').addEventListener('click',()=>{if(page<pages.length-1){page++;render();}});
   el('zoom').addEventListener('input',()=>{el('source-image').style.width=`${el('zoom').value}%`;el('zoom-value').textContent=`${el('zoom').value}%`;});
   el('download-decisions').addEventListener('click',()=>{
-    try { download('decisions.toml',exportToml(payload,decisions),'application/toml'); el('error').textContent=''; }
+    try { download('decisions.toml',exportToml(payload,decisions),'application/toml'); el('error').textContent=''; edited=false; }
     catch(error) { el('error').textContent=error.message; }
   });
   function timerDisplay() { el('timer').textContent=`${timer.elapsed()} ms (${timer.since === null ? 'paused' : 'running'})`; }

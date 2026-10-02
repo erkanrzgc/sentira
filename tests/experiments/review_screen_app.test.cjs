@@ -142,3 +142,24 @@ test('unit scenarios detect in-memory navigation and visibility regressions', ()
   assert.throws(() => navigationScenario(navigationMutant), {code: 'ERR_ASSERTION'});
   assert.throws(() => visibilityScenario(visibilityMutant), {code: 'ERR_ASSERTION'});
 });
+test('a successful download clears the unload warning until the next edit', () => {
+  const app = mount();
+  function attempt() { const event = {prevented: false, preventDefault() { this.prevented = true; }}; app.window.dispatch('beforeunload', event); return event; }
+  app.edit('action-0', 'accept'); app.click('download-decisions');
+  assert.equal(app.downloads.length, 1); assert.equal(attempt().prevented, false);
+  app.edit('action-0', 'pending'); assert.equal(attempt().prevented, true);
+});
+test('a valid download clears a stale error message', () => {
+  const app = mount(); app.edit('action-0', 'accept');
+  app.get('error').textContent = 'Stale validation message';
+  app.click('download-decisions');
+  assert.equal(app.downloads.length, 1); assert.equal(app.get('error').textContent, '');
+});
+test('pagehide pauses a running timer', () => {
+  const app = mount(); app.time(100); app.click('start-timer'); app.time(400);
+  app.window.dispatch('pagehide'); app.time(900);
+  assert.equal(app.get('timer').textContent, '300 ms (paused)');
+  const mutant = mount(appSource.replace("'pagehide'", "'unused-pagehide-event'"));
+  mutant.time(100); mutant.click('start-timer'); mutant.time(400); mutant.window.dispatch('pagehide'); mutant.time(900);
+  assert.notEqual(mutant.get('timer').textContent, '300 ms (paused)');
+});

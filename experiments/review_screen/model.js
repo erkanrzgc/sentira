@@ -3,7 +3,8 @@
   'use strict';
   function text(value, limit) {
     if (typeof value !== 'string' || !value.trim() || [...value].length > limit ||
-        /[\u0000-\u001f\u007f\u0085\u2028\u2029]/u.test(value)) {
+        /[\u0000-\u001f\u007f\u0085\u2028\u2029]/u.test(value) ||
+        /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
       throw new Error(`Use nonempty single-line text of at most ${limit} characters.`);
     }
     return value;
