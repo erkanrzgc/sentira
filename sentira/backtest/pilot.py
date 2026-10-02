@@ -4,9 +4,10 @@ The registration fixes the stratified sample, drawn by a registered seed from a
 frozen channel frame, the history and live spans, a hard quota ceiling and the
 adaptations the pilot may make. Strata name channel types only, so the schema has
 nowhere to put a counter. The lock binds the pilot to the channel frame, the
-collection policy, the quota policy and the volume assumptions, records the drawn
-sample and the projected cost, and is refused outside the registration-to-start
-window or above the ceiling.
+collection policy, the quota policy, the volume assumptions and the topic
+taxonomy, records the drawn sample and the projected cost, and is refused outside
+the registration-to-start window, above the ceiling, or before the taxonomy was
+frozen.
 """
 
 import json
@@ -20,6 +21,7 @@ from sentira.collectors.cost import project, retrieval_units
 from sentira.config.channels import ChannelFrame, load_channel_frame
 from sentira.config.collection import CollectionPolicy, load_collection_policy
 from sentira.config.quota import QuotaPolicy, load_quota_policy
+from sentira.config.taxonomy import Taxonomy, load_taxonomy
 from sentira.config.volume import VolumeAssumptions, load_volume
 from sentira.core.document import utc
 from sentira.core.registration import digest, exact, integer, sequence, slug
@@ -160,7 +162,8 @@ def projected_units(pilot, policy, quota, volume):
     return live + retrieval_units(policy, quota, sampled, pilot.history_days)
 
 
-INPUTS = ("pilot", "frame", "policy", "quota", "volume")
+INPUTS = ("pilot", "frame", "policy", "quota", "volume", "taxonomy")
+SCHEMA = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,6 +173,7 @@ class LockedPilot:
     policy: CollectionPolicy
     quota: QuotaPolicy
     volume: VolumeAssumptions
+    taxonomy: Taxonomy
     digests: tuple[str, ...]
     sample: tuple[tuple[str, tuple[str, ...]], ...]
     locked_at: datetime
@@ -177,10 +181,19 @@ class LockedPilot:
     projected_units: int
 
     def __post_init__(self):
-        kinds = (PilotRegistration, ChannelFrame, CollectionPolicy, QuotaPolicy, VolumeAssumptions)
+        kinds = (
+            PilotRegistration,
+            ChannelFrame,
+            CollectionPolicy,
+            QuotaPolicy,
+            VolumeAssumptions,
+            Taxonomy,
+        )
         values = tuple(getattr(self, name) for name in INPUTS)
         if any(type(value) is not kind for value, kind in zip(values, kinds, strict=True)):
-            raise ValueError("Validated pilot, frame, policy, quota and volume inputs are required")
+            raise ValueError(
+                "Validated pilot, frame, policy, quota, volume and taxonomy inputs are required"
+            )
         if self.digests != tuple(digest(value) for value in values):
             raise ValueError("An input file does not match the pilot lock")
         if self.sample != select_sample(self.pilot, self.frame):
@@ -190,6 +203,9 @@ class LockedPilot:
         locked_at = utc(self.locked_at)
         if not self.pilot.registered_at <= locked_at <= self.pilot.collection_start:
             raise ValueError("A pilot is locked after registration and before any collection")
+        # Topics are fixed before the pilot sees data, so none is written with hindsight.
+        if self.taxonomy.frozen_at > locked_at:
+            raise ValueError("The taxonomy must be frozen before the pilot is locked")
         if type(self.projected_units) is not int:
             raise ValueError("The projected pilot cost must be a whole number of units")
         expected = projected_units(self.pilot, self.policy, self.quota, self.volume)
@@ -199,9 +215,9 @@ class LockedPilot:
             raise ValueError("The projected pilot cost exceeds its quota ceiling")
 
 
-def lock_pilot(pilot, frame, policy, quota, volume, *, locked_at, source):
+def lock_pilot(pilot, frame, policy, quota, volume, taxonomy, *, locked_at, source):
     """Validate and return the locked view; every check runs once, at construction."""
-    values = (pilot, frame, policy, quota, volume)
+    values = (pilot, frame, policy, quota, volume, taxonomy)
     return LockedPilot(
         *values,
         digests=tuple(digest(value) for value in values),
@@ -212,26 +228,27 @@ def lock_pilot(pilot, frame, policy, quota, volume, *, locked_at, source):
     )
 
 
-def pilot_lock_text(pilot, frame, policy, quota, volume, *, locked_at, source):
-    locked = lock_pilot(pilot, frame, policy, quota, volume, locked_at=locked_at, source=source)
+def pilot_lock_text(*values, locked_at, source):
+    locked = lock_pilot(*values, locked_at=locked_at, source=source)
     record = {
         **{f"{name}_sha256": value for name, value in zip(INPUTS, locked.digests, strict=True)},
         "locked_at": locked.locked_at.isoformat(),
         "locked_at_source": locked.locked_at_source,
         "projected_units": locked.projected_units,
         "sample": {name: list(ids) for name, ids in locked.sample},
-        "schema": 1,
+        "schema": SCHEMA,
     }
     return json.dumps(record, indent=2, sort_keys=True) + "\n"
 
 
-def _inputs(pilot_path, frame_path, policy_path, quota_path, volume_path):
+def _inputs(pilot_path, frame_path, policy_path, quota_path, volume_path, taxonomy_path):
     return (
         load_pilot(pilot_path),
         load_channel_frame(frame_path),
         load_collection_policy(policy_path),
         load_quota_policy(quota_path),
         load_volume(volume_path),
+        load_taxonomy(taxonomy_path),
     )
 
 
@@ -253,7 +270,7 @@ def load_pilot_lock(*paths, lock_path):
         sample = tuple((name, tuple(ids)) for name, ids in record["sample"].items())
     except (json.JSONDecodeError, TypeError, AttributeError):
         raise ValueError("The pilot lock is not readable") from None
-    if type(record["schema"]) is not int or record["schema"] != 1:
+    if type(record["schema"]) is not int or record["schema"] != SCHEMA:
         raise ValueError("Unsupported pilot lock schema")
     return LockedPilot(
         *inputs,

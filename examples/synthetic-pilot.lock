@@ -26,6 +26,7 @@
       "synthetic-news-outlet-08"
     ]
   },
-  "schema": 1,
+  "schema": 2,
+  "taxonomy_sha256": "f8ea00072f5e7c0eaa909e7f31c5b404b8c3eda9def16bdce3b922d83e6882e1",
   "volume_sha256": "f3b0432f45de9a4536d39f07db2caa0d649731455a56cf47de2b60125738c655"
 }

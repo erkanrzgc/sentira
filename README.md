@@ -170,8 +170,8 @@ sentira/
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   nlp/          single-label lexical topic assignment on as-of comment text
-  eval/         seeded, blind, stratified topic audit; Wilson intervals and
-                intra-annotator agreement
+  eval/         seeded, blind, stratified topic audit; weighted rates with
+                Wilson intervals, baselines and intra-annotator agreement
   backtest/     locked surge registration, per-cell positive counts and the
                 locked pilot registration
   cli.py        briefing, case-report, measure, lock, count, cost and
@@ -366,16 +366,17 @@ the buffer. See the [cost-projection design](docs/superpowers/specs/2026-10-02-c
 .venv/bin/python -m sentira.cli lock-pilot \
   --pilot examples/synthetic-pilot.toml --channels examples/synthetic-channels.toml \
   --policy examples/synthetic-policy.toml --quota examples/synthetic-quota.toml \
-  --volume examples/synthetic-volume.toml --locked-at 2029-12-15T00:00:00Z \
-  --output out/pilot.lock
+  --volume examples/synthetic-volume.toml --taxonomy examples/synthetic-taxonomy.toml \
+  --locked-at 2029-12-15T00:00:00Z --output out/pilot.lock
 ```
 
 The pilot registration fixes a small stratified sample, drawn by a registered
 seed from a frozen channel frame, the history and live spans, a hard quota
 ceiling and the only adaptations the pilot may make; strata name channel types,
 and no field can hold a counter. The lock records the drawn sample and is refused
-outside the window from registration to collection start or when the projected
-pilot cost exceeds the ceiling; it stops matching if any input file changes.
+outside the window from registration to collection start, when the projected
+pilot cost exceeds the ceiling, or before the topic taxonomy was frozen; it stops
+matching if any input file changes.
 Without `--locked-at` the system clock is used; a typed time is recorded as
 declared, because offline it is a statement rather than evidence. The example
 values are fictional. See the [pilot-registration design](docs/superpowers/specs/2026-10-02-pilot-registration.md).
@@ -393,8 +394,10 @@ frozen lexical taxonomy (`examples/synthetic-taxonomy.toml`, invented keywords):
 the topic with the most distinct matching keywords wins, ties going to the topic
 registered first. Only comments visible in an as-of read are assigned, never a
 video title, and each assignment carries the taxonomy digest. The topic audit
-draws a seeded, blind, stratified sample and reports precision and recall with
-Wilson intervals, and intra-annotator agreement as Cohen's kappa. See the
+draws a seeded, blind, stratified sample, weights each item by its stratum's
+population, and reports precision and recall with Wilson intervals, accuracy
+beside majority-class and random baselines, and intra-annotator agreement as
+Cohen's kappa. See the
 [topic-taxonomy design](docs/superpowers/specs/2026-10-02-topic-taxonomy.md).
 
 ## Generate a synthetic briefing

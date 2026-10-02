@@ -43,9 +43,9 @@ economy, including markets and gold; market data themselves are deferred (ROADMA
 | Rule | Behaviour |
 |---|---|
 | Keywords | A whole word, or a stem of at least four letters ending in `*`; letters only, written in normalised form |
-| Ownership | A keyword belongs to one topic only |
+| Ownership | A keyword belongs to one topic only, and a stem may not cover another keyword in any topic, so one word matches at most one keyword |
 | Normalisation | A registered case map folds characters before lower-casing, so language-specific case folding is data, not code |
-| Freezing | `frozen_at` and the content digest; assignment refuses a taxonomy whose digest differs from the registered one |
+| Freezing | `frozen_at` and the content digest; assignment and the audit refuse a taxonomy whose digest differs from the registered one; the pilot lock records the digest and is refused before `frozen_at` |
 | Counters | Unknown fields are refused, so no topic can be defined by a counter |
 
 A lexical matcher sees surface forms. In a language that builds words with
@@ -60,17 +60,26 @@ folding is a later step.
 *T* belongs to no topic at *T*, and publication text such as a video title is never
 used. Each assignment records the taxonomy digest.
 
+BACKTEST §0.4 asks for the share of retrieved comments withheld because they were
+edited after *T*. Under the strict rule implemented now that share does not arise:
+storage refuses a row updated after it was observed, so a comment edited after *T*
+was also observed after *T* and is not yet known at *T*. The share belongs to the
+replay carve-out for retrieved rows and is reported when that is built.
+
 ## Audit and agreement set
 
 | Element | Design |
 |---|---|
-| Sample | Seeded, per stratum: positive-episode, negative-episode and non-episode intervals, crossed with assigned and unassigned comments as the strata the caller supplies |
+| Sample | Seeded, per stratum: positive-episode, negative-episode and non-episode intervals, crossed with assigned and unassigned comments as the strata the caller supplies. A document enters once; a stratum smaller than the registered size is taken whole and its shortfall reported |
+| Provenance | Candidates are built from an as-of comment and its assignment and keep its taxonomy digest; the draw refuses another digest or an unregistered topic, and records the digest, the topics and each stratum's population |
 | Span | A development audit draws only from before the first origin; a confirmatory audit only from after it |
 | Blinding | Items carry an opaque identifier and the text; they are shuffled across strata; the key to documents, strata and assignments is kept apart |
 | Size | About 100 items per stratum give a Wilson interval of roughly ±0.1 at a proportion of one half (*calculated*) |
-| Metrics | Precision and recall per topic with Wilson score intervals, unweighted across strata |
+| Metrics | Precision and recall per topic, each item weighted by its stratum's population over its sample, so the rates estimate the population rather than the sample; Wilson score intervals at the Kish effective sample size, an approximation that equals the plain Wilson interval when every weight is equal |
+| Baselines | Accuracy beside the majority-class accuracy and the expected accuracy of a random assigner with the same assigned shares; per topic, the weighted prevalence and assigned share |
+| Labels | An annotation is a registered topic or none; anything else is refused |
 | Floor | Recall is compared with a registered floor through the lower interval bound; the floor is registered with the pilot |
-| Agreement | Cohen's kappa between the first labelling and the blind re-labelling of 100 items after at least a week |
+| Agreement | Cohen's kappa between the first labelling and the blind re-labelling of 100 items after at least a week, paired by item identifier |
 
 ## Acceptance tests
 
@@ -88,6 +97,13 @@ used. Each assignment records the taxonomy digest.
 | A development audit samples the pre-origin span only | `::test_development_audit_samples_pre_origin_span_only` |
 | Wilson intervals and Cohen's kappa match known values | `::test_wilson_interval_known_values`, `::test_cohen_kappa_known_values` |
 | Precision, recall and complete annotation | `::test_audit_metrics_and_recall_floor` |
+| Rates are weighted by stratum population | `::test_recall_is_weighted_by_stratum_population` |
+| Accuracy is reported beside its baselines | `::test_accuracy_is_reported_beside_its_baselines` |
+| Annotations name registered topics only | `::test_annotation_labels_must_be_registered_topics` |
+| A short stratum is reported | `::test_short_stratum_is_reported_not_hidden` |
+| Duplicates, other digests and unregistered topics are refused | `::test_draw_refuses_duplicates_foreign_digests_and_unknown_topics` |
+| Candidates keep the assignment digest | `::test_candidate_carries_the_assignment_digest` |
+| The pilot lock binds the taxonomy | `backtest/test_pilot.py::test_pilot_lock_binds_a_taxonomy_frozen_before_it` |
 
 Open: whether the real keyword lists, which reveal the target language, are kept
 in the repository or outside it with only their digest recorded; decided before

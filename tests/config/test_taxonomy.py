@@ -46,6 +46,10 @@ def test_shipped_taxonomy_validates_in_registered_order():
         ('case_map = [["K", "q"]]', 'case_map = [["K", "q"], ["K", "r"]]'),
         ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["sentavo", "sentavo"]'),
         ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["sentavo", 5]'),
+        ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["sentavo", "valtorin"]'),
+        ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["sentavo", "valtori*"]'),
+        ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["kirumelo", "kirumel*"]'),
+        ('keywords = ["sentavo", "kirumel*"]', 'keywords = ["sentavo", "valtor"]'),
     ],
 )
 def test_invalid_taxonomies_are_refused(tmp_path, old, new):
