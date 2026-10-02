@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from urllib.parse import urlsplit
 
 from sentira.core.document import utc
 from sentira.core.registration import slug, synthetic_url, text
@@ -151,6 +152,9 @@ class CaseSnapshot:
         for event in self.events:
             if event.case_id not in cases or event.source_id not in sources:
                 raise ValueError("Unknown case or source reference")
+            # Same rule as briefing evidence: a link must stay on its source's host.
+            if urlsplit(event.url).netloc != urlsplit(sources[event.source_id].url).netloc:
+                raise ValueError("Event URL does not match its registered source")
             seen = {event.id}
             cursor = event
             while cursor.supersedes is not None:
