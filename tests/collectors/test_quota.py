@@ -149,13 +149,17 @@ def test_exhaustion_stops_cleanly_and_persists_collected(tmp_path):
     collected = []
     with QuotaLedger(path, policy, clock=Clock()) as ledger:
         transport = Transport(ledger)
-        requests = [("retrieval", "commentThreads.list", {"page": n}) for n in range(10)]
-        result = drain(requests, MeteredClient(transport, ledger), collected.append)
-    assert (result.completed, result.stopped) == (5, "quota_exhausted")
-    assert [item["params"]["page"] for item in collected] == [0, 1, 2, 3, 4]
-    assert len(transport.calls) == 5
+        client = MeteredClient(transport, ledger)
+        requests = [("commentThreads.list", {"page": n}) for n in range(10)]
+        result = drain("retrieval", requests, client, collected.append)
+        assert (result.completed, result.stopped) == (5, "quota_exhausted")
+        assert [item["params"]["page"] for item in collected] == [0, 1, 2, 3, 4]
+        assert len(transport.calls) == 5
+        # An exhausted reservation stops only its own purpose's queue.
+        live = drain("live", [("playlistItems.list", {})] * 3, client, collected.append)
+        assert (live.completed, live.stopped) == (3, None)
     with QuotaLedger(path, policy, clock=Clock(T0 + timedelta(hours=1))) as reopened:
-        assert len(reopened.debits()) == 5
+        assert len(reopened.debits()) == 8
 
 
 def test_drain_reports_completion_when_quota_suffices(tmp_path):
@@ -165,13 +169,15 @@ def test_drain_reports_completion_when_quota_suffices(tmp_path):
     collected = []
     with QuotaLedger(":memory:", small_policy(tmp_path), clock=Clock()) as ledger:
         client = MeteredClient(Transport(ledger), ledger)
-        requests = [("survival", "videos.list", {"page": n}) for n in range(3)]
-        result = drain(requests, client, collected.append)
+        requests = [("videos.list", {"page": n}) for n in range(3)]
+        result = drain("survival", requests, client, collected.append)
         assert (result.completed, result.stopped) == (3, None)
         with pytest.raises(ValueError):
             MeteredClient(None, ledger)
         with pytest.raises(ValueError):
-            drain(requests, object(), collected.append)
+            drain("survival", requests, object(), collected.append)
+        with pytest.raises(ValueError):
+            drain("buffer", requests, client, collected.append)
     assert len(collected) == 3
 
 
@@ -249,9 +255,64 @@ def test_debits_survive_reopen_and_refuse_clock_regression(tmp_path):
         with pytest.raises(ValueError, match="backwards"):
             reopened.debit("live", "videos.list")
         assert len(reopened.debits()) == 1
-    other = small_policy(tmp_path, live=5999, buffer=501)
-    with pytest.raises(ValueError, match="policy"):
-        QuotaLedger(path, other, clock=Clock())
+
+
+def test_policy_change_keeps_the_days_spend(tmp_path):
+    from sentira.config.quota import load_quota_policy
+    from sentira.storage.quota import QuotaExhausted, QuotaLedger
+
+    path = tmp_path / "ledger.sqlite3"
+    first = small_policy(tmp_path, retrieval=3)
+    with QuotaLedger(path, first, clock=Clock()) as ledger:
+        ledger.debit("retrieval", "videos.list")
+        ledger.debit("retrieval", "videos.list")
+    tighter = small_policy(tmp_path, retrieval=2)
+    later = Clock(T0 + timedelta(hours=1))
+    with pytest.raises(ValueError, match="backwards"):
+        QuotaLedger(path, tighter, clock=Clock(T0 - timedelta(seconds=1)))
+    with QuotaLedger(path, tighter, clock=later) as ledger:
+        # The two units spent under the first policy still count today.
+        with pytest.raises(QuotaExhausted):
+            ledger.debit("retrieval", "videos.list")
+        ledger.debit("live", "videos.list")
+        digests = [debit.policy_sha256 for debit in ledger.debits()]
+        assert digests == [first.sha256, first.sha256, tighter.sha256]
+    shifted = tmp_path / "shifted.toml"
+    shifted.write_text(
+        policy_text(retrieval=2).replace(
+            "quota_day_utc_offset_minutes = 0", "quota_day_utc_offset_minutes = -480"
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="offset"):
+        QuotaLedger(path, load_quota_policy(shifted), clock=later)
+
+
+def test_unrecorded_outcome_leaves_debit_pending_and_spent(tmp_path):
+    from sentira.collectors.quota import MeteredClient
+    from sentira.storage.quota import QuotaLedger
+
+    clock = Clock()
+
+    def regressing(fail):
+        def transport(endpoint, params):
+            # A wall clock stepped back during the call makes the outcome unrecordable.
+            clock.now = T0 - timedelta(seconds=1)
+            if fail:
+                raise RuntimeError("synthetic transport failure")
+            return "result"
+
+        return transport
+
+    with QuotaLedger(":memory:", small_policy(tmp_path), clock=clock) as ledger:
+        assert MeteredClient(regressing(False), ledger).call("retrieval", "videos.list", {}) == (
+            "result"
+        )
+        clock.now = T0
+        with pytest.raises(RuntimeError, match="synthetic"):
+            MeteredClient(regressing(True), ledger).call("retrieval", "videos.list", {})
+        assert [debit.outcome for debit in ledger.debits()] == ["pending", "pending"]
+        assert ledger.spent() == {"retrieval": 2}
 
 
 def test_failed_call_still_spends_units(tmp_path):

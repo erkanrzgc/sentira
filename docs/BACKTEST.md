@@ -611,7 +611,7 @@ clock, temporary database), `tests/fixtures/`.
 | Point-in-time read rule, as amended | `test_engagement.py::test_series_at_T_invariant_to_rows_invisible_at_T`, `test_episodes.py::test_onset_invariant_to_rows_invisible_at_T`, the nine `test_asof.py` cases, `test_repository.py` (two), `test_architecture.py::test_only_storage_imports_database_driver` |
 | Replay fidelity | `test_policy.py::test_replay_matches_live_visibility_on_recorded_video` |
 | Config target-type restriction | `test_schema.py::test_target_of_disallowed_type_rejected_at_load` |
-| No search endpoint | `test_youtube.py::test_only_permitted_endpoints_called` |
+| No search endpoint | `test_youtube.py::test_only_permitted_endpoints_called`; implemented offline as `collectors/test_quota.py::test_unregistered_endpoint_refused_before_any_debit` |
 | Pre-registration binding | `test_registration.py::test_count_refuses_on_registration_hash_mismatch` |
 
 Nineteen modules. Deliberately absent: `forecast/`, `report/`, sentiment, stance,

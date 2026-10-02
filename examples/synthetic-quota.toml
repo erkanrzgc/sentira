@@ -1,6 +1,6 @@
 # Fictional development quota policy for the metered client. Reservations follow
-# the calculated table in docs/FEASIBILITY.md. The provider's quota-day boundary is
-# a registered input here, not a verified fact.
+# the calculated table in docs/BACKTEST.md section B. The provider's quota-day
+# boundary is a registered input here, not a verified fact.
 mode = "synthetic"
 version = "synthetic-quota-1"
 daily_units = 10000

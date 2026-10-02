@@ -4,7 +4,8 @@ A debit draws on the purpose's own reservation for the current quota day, then o
 the buffer if the policy lets that purpose overflow, and is refused otherwise. The
 reservation check and the debit row are one immediate transaction, so two handles
 on the same file cannot both spend the last unit. A failed call stays spent, and a
-debit left pending by a crash counts as spent.
+debit left pending by a crash counts as spent. A new policy may be adopted within
+a ledger, keeping the day's spend, as long as the quota-day offset is unchanged.
 """
 
 import sqlite3
@@ -20,6 +21,9 @@ OUTCOMES = ("pending", "ok", "failed")
 TABLES = frozenset({"quota_meta", "quota_debits"})
 
 
+POLICY_SHA256 = "length(policy_sha256)=64 AND policy_sha256 NOT GLOB '*[^0-9a-f]*'"
+
+
 def _in(values):
     return "(" + ", ".join(f"'{value}'" for value in values) + ")"
 
@@ -27,8 +31,8 @@ def _in(values):
 DDL = f"""
 CREATE TABLE quota_meta (
     singleton INTEGER PRIMARY KEY CHECK(singleton=1),
-    policy_sha256 TEXT NOT NULL
-        CHECK(length(policy_sha256)=64 AND policy_sha256 NOT GLOB '*[^0-9a-f]*'),
+    policy_sha256 TEXT NOT NULL CHECK({POLICY_SHA256}),
+    quota_day_utc_offset_minutes INTEGER NOT NULL,
     last_write TEXT NOT NULL
 ) STRICT;
 CREATE TABLE quota_debits (
@@ -39,6 +43,7 @@ CREATE TABLE quota_debits (
     endpoint TEXT NOT NULL,
     units INTEGER NOT NULL CHECK(units > 0),
     debited_at TEXT NOT NULL,
+    policy_sha256 TEXT NOT NULL CHECK({POLICY_SHA256}),
     outcome TEXT NOT NULL CHECK(outcome IN {_in(OUTCOMES)}),
     settled_at TEXT,
     CHECK(pool = purpose OR pool = 'buffer'),
@@ -61,6 +66,7 @@ class Debit:
     endpoint: str
     units: int
     debited_at: datetime
+    policy_sha256: str
     outcome: str
 
 
@@ -108,19 +114,21 @@ class QuotaLedger:
                     if statement.strip():
                         db.execute(statement)
                 db.execute(
-                    "INSERT INTO quota_meta VALUES (1, ?, ?)", (self._policy.sha256, created)
+                    "INSERT INTO quota_meta VALUES (1, ?, ?, ?)",
+                    (self._policy.sha256, self._policy.quota_day_utc_offset_minutes, created),
                 )
                 db.execute("PRAGMA user_version=1")
             elif tables != TABLES or version != 1:
                 raise StorageError("Unsupported quota ledger schema")
             else:
                 row = db.execute(
-                    "SELECT policy_sha256 FROM quota_meta WHERE singleton=1"
+                    "SELECT policy_sha256, quota_day_utc_offset_minutes, last_write "
+                    "FROM quota_meta WHERE singleton=1"
                 ).fetchone()
                 if row is None:
                     raise StorageError("Unsupported quota ledger schema")
                 if row[0] != self._policy.sha256:
-                    raise ValueError("The ledger was created under a different quota policy")
+                    self._adopt(db, *row[1:])
             db.commit()
         except sqlite3.Error:
             db.rollback()
@@ -128,6 +136,19 @@ class QuotaLedger:
         except BaseException:
             db.rollback()
             raise
+
+    def _adopt(self, db, offset, last):
+        """Adopt a new policy; the day's spend so far counts against its reservations."""
+        if offset != self._policy.quota_day_utc_offset_minutes:
+            # Quota days at two offsets overlap, so their spend cannot be carried over.
+            raise ValueError("A new policy cannot change the ledger's quota-day offset")
+        stamp = timestamp(self._clock())
+        if stamp < last:
+            raise ValueError("The ledger clock moved backwards")
+        db.execute(
+            "UPDATE quota_meta SET policy_sha256=?, last_write=? WHERE singleton=1",
+            (self._policy.sha256, stamp),
+        )
 
     def _connection(self):
         if self._closed:
@@ -179,10 +200,9 @@ class QuotaLedger:
             else:
                 raise QuotaExhausted("The reservation for this purpose is exhausted")
             cursor = db.execute(
-                "INSERT INTO quota_debits "
-                "(quota_day, purpose, pool, endpoint, units, debited_at, outcome) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'pending')",
-                (day, purpose, pool, endpoint, cost, stamp),
+                "INSERT INTO quota_debits (quota_day, purpose, pool, endpoint, units, "
+                "debited_at, policy_sha256, outcome) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')",
+                (day, purpose, pool, endpoint, cost, stamp, self._policy.sha256),
             )
             return cursor.lastrowid
 
@@ -208,11 +228,11 @@ class QuotaLedger:
 
     def debits(self):
         rows = self._connection().execute(
-            "SELECT id, quota_day, purpose, pool, endpoint, units, debited_at, outcome "
-            "FROM quota_debits ORDER BY id"
+            "SELECT id, quota_day, purpose, pool, endpoint, units, debited_at, policy_sha256, "
+            "outcome FROM quota_debits ORDER BY id"
         )
         return tuple(
-            Debit(*row[:6], datetime.fromisoformat(row[6]), row[7]) for row in rows.fetchall()
+            Debit(*row[:6], datetime.fromisoformat(row[6]), *row[7:]) for row in rows.fetchall()
         )
 
     def spent(self):
