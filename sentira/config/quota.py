@@ -13,7 +13,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from sentira.core.document import utc
-from sentira.core.registration import digest, exact, sequence, slug
+from sentira.core.registration import digest, exact, integer, sequence, slug
 
 PURPOSES = ("live", "retrieval", "survival")
 POOLS = (*PURPOSES, "buffer")
@@ -23,10 +23,10 @@ ENDPOINT = re.compile(r"[a-z][A-Za-z]{0,63}\.list")
 MAX_DAILY_UNITS = 10**9
 
 
-def units(value, low, high):
-    if type(value) is not int or not low <= value <= high:
-        raise ValueError("A bounded integer number of units is required")
-    return value
+def pairs(values):
+    if any(type(item) is not tuple or len(item) != 2 for item in values):
+        raise ValueError("Name and value pairs are required")
+    return values
 
 
 def endpoint_name(value):
@@ -47,41 +47,51 @@ class QuotaPolicy:
     buffer_purposes: tuple[str, ...]
     endpoints: tuple[tuple[str, int], ...]
 
+    def __post_init__(self):
+        if self.mode != "synthetic":
+            raise ValueError("Only synthetic quota policies are supported")
+        slug(self.version)
+        daily = integer(self.daily_units, 1, MAX_DAILY_UNITS)
+        offset = self.quota_day_utc_offset_minutes
+        if type(offset) is not int or not -840 <= offset <= 840 or offset % 15:
+            raise ValueError("The quota-day offset must be a multiple of 15 minutes within a day")
+        if type(self.reservations) is not tuple or [
+            pool for pool, _ in pairs(self.reservations)
+        ] != list(POOLS):
+            raise ValueError("Reservations must name exactly the registered pools")
+        if sum(integer(value, 0, daily) for _, value in self.reservations) != daily:
+            raise ValueError("The reservations must sum to the daily units")
+        purposes = self.buffer_purposes
+        if type(purposes) is not tuple or list(purposes) != sorted(set(purposes)):
+            raise ValueError("Buffer purposes must be a sorted tuple without duplicates")
+        if any(purpose not in PURPOSES for purpose in purposes):
+            raise ValueError("Only collection purposes may draw on the buffer")
+        endpoints = self.endpoints
+        if type(endpoints) is not tuple or not endpoints:
+            raise ValueError("At least one endpoint must be registered")
+        names = [endpoint_name(name) for name, _ in pairs(endpoints)]
+        if names != sorted(set(names)):
+            raise ValueError("Endpoints must be sorted without duplicates")
+        for _, cost in endpoints:
+            integer(cost, 1, daily)
+
     @classmethod
     def from_mapping(cls, raw):
         keys = "mode version daily_units quota_day_utc_offset_minutes reservations buffer endpoints"
         exact(raw, keys.split())
-        if raw["mode"] != "synthetic":
-            raise ValueError("Only synthetic quota policies are supported")
-        daily = units(raw["daily_units"], 1, MAX_DAILY_UNITS)
-        offset = raw["quota_day_utc_offset_minutes"]
-        if type(offset) is not int or not -840 <= offset <= 840 or offset % 15:
-            raise ValueError("The quota-day offset must be a multiple of 15 minutes within a day")
-
         reserved = exact(raw["reservations"], POOLS)
-        reservations = tuple((pool, units(reserved[pool], 0, daily)) for pool in POOLS)
-        if sum(value for _, value in reservations) != daily:
-            raise ValueError("The reservations must sum to the daily units")
-
         purposes = sequence(exact(raw["buffer"], ("purposes",))["purposes"], slug)
-        if any(purpose not in PURPOSES for purpose in purposes):
-            raise ValueError("Only collection purposes may draw on the buffer")
-
         registered = raw["endpoints"]
-        if not isinstance(registered, dict) or not registered:
-            raise ValueError("At least one endpoint must be registered")
-        endpoints = tuple(
-            (endpoint_name(name), units(cost, 1, daily))
-            for name, cost in sorted(registered.items())
-        )
+        if not isinstance(registered, dict):
+            raise ValueError("Endpoints must be a table")
         return cls(
             mode=raw["mode"],
-            version=slug(raw["version"]),
-            daily_units=daily,
-            quota_day_utc_offset_minutes=offset,
-            reservations=reservations,
+            version=raw["version"],
+            daily_units=raw["daily_units"],
+            quota_day_utc_offset_minutes=raw["quota_day_utc_offset_minutes"],
+            reservations=tuple((pool, reserved[pool]) for pool in POOLS),
             buffer_purposes=tuple(sorted(purposes)),
-            endpoints=endpoints,
+            endpoints=tuple(sorted(registered.items())),
         )
 
     @property

@@ -1144,5 +1144,18 @@ thread, ties admitted, latency dropped, discovery one tick late and a strict due
 boundary that silently dropped an age due exactly at discovery. An interrupted
 mutation run once left the latency mutation in the working tree; it was found by
 the failing tests and restored before commit.
-527 Python tests passed with 96% line and branch coverage; ruff check and format
+A high-effort review of the commit raised nine points. Fixed: with discovery
+slower than the last age, the nominal schedule counted a live-only catch-up as a
+replay poll, admitting threads posted after the last age; the shipped policy could
+not reveal it, so `test_catch_up_never_counts_as_a_replay_poll` uses a 12-hour
+discovery and ages of 1 and 6 hours. Both policies are now validated at
+construction, not only when loaded. Completed ages must be integers that were due
+by the restart. Unrepresentable times raise `ValueError`. Replay bisects sorted
+times instead of scanning every thread per poll. The bounded-integer validator,
+copied four times, now lives in `core/registration.py`. Test helpers check that
+their text replacements matched, and BACKTEST names the implemented replay test.
+Not changed: the one-line `HOUR` constant stays local rather than coupling
+collectors to the series package. Eighteen mutations of the revised code, the
+three new rules included, each fail at least one test.
+530 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.

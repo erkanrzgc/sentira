@@ -25,8 +25,10 @@ def policy_text(**reservations):
     text = POLICY.read_text(encoding="utf-8")
     for name, value in values.items():
         default = {"live": 6000, "retrieval": 3000, "survival": 500, "buffer": 500}[name]
+        assert f"{name} = {default}\n" in text
         text = text.replace(f"{name} = {default}\n", f"{name} = {value}\n", 1)
     total = sum(values.values())
+    assert "daily_units = 10000" in text
     return text.replace("daily_units = 10000", f"daily_units = {total}", 1)
 
 
@@ -70,6 +72,31 @@ def test_shipped_policy_matches_the_calculated_reservations():
     assert policy.cost("commentThreads.list") == 1
     with pytest.raises(ValueError):
         policy.cost("search.list")
+    # Direct construction is validated as strictly as loading.
+    fields = {
+        "mode": "synthetic",
+        "version": "x",
+        "daily_units": 10,
+        "quota_day_utc_offset_minutes": 0,
+        "reservations": (("live", 4), ("retrieval", 3), ("survival", 2), ("buffer", 1)),
+        "buffer_purposes": ("live",),
+        "endpoints": (("videos.list", 1),),
+    }
+    assert type(policy).__name__ == "QuotaPolicy" and type(policy)(**fields).daily_units == 10
+    for name, value in (
+        ("daily_units", 11),
+        ("reservations", (("live", 10),)),
+        ("buffer_purposes", ("buffer",)),
+        ("endpoints", (("search.list", 1),)),
+        ("endpoints", (("videos.list", True),)),
+        ("mode", "live"),
+        ("reservations", (("retrieval", 3), ("live", 4), ("survival", 2), ("buffer", 1))),
+        ("reservations", ("live",)),
+        ("buffer_purposes", ("survival", "live")),
+        ("endpoints", (("videos.list", 1), ("videos.list", 1))),
+    ):
+        with pytest.raises(ValueError):
+            type(policy)(**{**fields, name: value})
 
 
 @pytest.mark.parametrize(

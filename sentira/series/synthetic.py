@@ -10,17 +10,11 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from sentira.core.document import utc
-from sentira.core.registration import digest, exact, slug
+from sentira.core.registration import digest, exact, integer, slug
 from sentira.series.episodes import Observation, whole_hour
 
 MAX_ROWS = 2_000_000
 MAX_SEGMENTS = 10_000
-
-
-def bounded(value, low, high):
-    if type(value) is not int or not low <= value <= high:
-        raise ValueError("A bounded integer is required")
-    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,9 +37,9 @@ class Segment:
         exact(raw, ("first", "hours", "per_hour"), ("delay_hours",))
         return cls(
             first=utc(raw["first"]),
-            hours=bounded(raw["hours"], 1, 24 * 400),
-            per_hour=bounded(raw["per_hour"], 0, 1000),
-            delay=timedelta(hours=bounded(raw.get("delay_hours", 0), 0, 24 * 30)),
+            hours=integer(raw["hours"], 1, 24 * 400),
+            per_hour=integer(raw["per_hour"], 0, 1000),
+            delay=timedelta(hours=integer(raw.get("delay_hours", 0), 0, 24 * 30)),
         )
 
     @property

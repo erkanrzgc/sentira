@@ -19,6 +19,12 @@ def exact(value, required, optional=()):
     return value
 
 
+def integer(value, low, high):
+    if type(value) is not int or not low <= value <= high:
+        raise ValueError("A bounded integer is required")
+    return value
+
+
 def text(value):
     if not isinstance(value, str) or not value.strip() or len(value) > 10000:
         raise ValueError("A bounded non-empty string is required")
