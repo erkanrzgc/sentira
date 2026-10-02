@@ -12,7 +12,7 @@ from sentira.collectors.policy import (
     poll_jobs,
     replay_times,
 )
-from sentira.config.collection import load_collection_policy
+from sentira.config.collection import CollectionPolicy, load_collection_policy
 
 ROOT = Path(__file__).resolve().parents[2]
 POLICY_PATH = ROOT / "examples/synthetic-policy.toml"
@@ -26,13 +26,22 @@ def policy():
     return load_collection_policy(POLICY_PATH)
 
 
-def small_policy(tmp_path, page_size, page_cap):
+def edited_policy(tmp_path, **replacements):
     text = POLICY_PATH.read_text(encoding="utf-8")
-    text = text.replace("page_size = 100", f"page_size = {page_size}")
-    text = text.replace("page_cap = 10", f"page_cap = {page_cap}")
+    for old, new in replacements.values():
+        assert old in text
+        text = text.replace(old, new, 1)
     path = tmp_path / "policy.toml"
     path.write_text(text, encoding="utf-8")
     return load_collection_policy(path)
+
+
+def small_policy(tmp_path, page_size, page_cap):
+    return edited_policy(
+        tmp_path,
+        size=("page_size = 100", f"page_size = {page_size}"),
+        cap=("page_cap = 10", f"page_cap = {page_cap}"),
+    )
 
 
 def test_shipped_policy_validates(policy):
@@ -40,6 +49,11 @@ def test_shipped_policy_validates(policy):
     assert policy.poll_ages_hours == AGES
     assert (policy.page_size, policy.page_cap) == (100, 10)
     assert len(policy.sha256) == 64
+    # Direct construction is validated as strictly as loading.
+    with pytest.raises(ValueError):
+        CollectionPolicy("live", "x", 6, AGES, 100, 10)
+    with pytest.raises(ValueError):
+        CollectionPolicy("synthetic", "x", 6, (), 100, 10)
 
 
 @pytest.mark.parametrize(
@@ -51,6 +65,7 @@ def test_shipped_policy_validates(policy):
         ("[1, 6, 24, 72, 168, 720]", "[1, 6, 6]"),
         ("[1, 6, 24, 72, 168, 720]", "[]"),
         ("[1, 6, 24, 72, 168, 720]", "[0, 6]"),
+        ("[1, 6, 24, 72, 168, 720]", "6"),
         ("page_size = 100", "page_size = 101"),
         ("page_cap = 10", "page_cap = 0"),
         ('mode = "synthetic"', 'mode = "live"'),
@@ -108,9 +123,14 @@ def test_restart_preserves_completed_jobs(policy):
     assert [job.ages_hours for job in jobs] == [(6, 24), (72,), (168,), (720,)]
     assert jobs[0].due_at == P + 30 * HOUR
     assert all(1 not in job.ages_hours for job in jobs)
-    assert poll_jobs(policy, P, discovered_at=P, completed=AGES) == ()
+    finished = poll_jobs(policy, P, discovered_at=P, completed=AGES, resumed_at=P + 721 * HOUR)
+    assert finished == ()
+    for completed in ((2,), (True,)):
+        with pytest.raises(ValueError):
+            poll_jobs(policy, P, discovered_at=P, completed=completed, resumed_at=P + 30 * HOUR)
+    # An age cannot have been completed before it was due.
     with pytest.raises(ValueError):
-        poll_jobs(policy, P, discovered_at=P, completed=(2,))
+        poll_jobs(policy, P, discovered_at=P, completed=(720,), resumed_at=P + 30 * HOUR)
 
 
 def test_catch_up_after_last_age_is_live_only(policy):
@@ -124,6 +144,31 @@ def test_catch_up_after_last_age_is_live_only(policy):
     nominal = poll_jobs(policy, P, discovered_at=discovery_time(policy, P))
     assert nominal_poll_times(policy, P) == tuple(job.due_at for job in nominal)
     assert not any(job.live_only for job in nominal)
+
+
+def test_catch_up_never_counts_as_a_replay_poll(tmp_path):
+    # Discovery every 12 h with a last age of 6 h: some videos are first seen late.
+    policy = edited_policy(
+        tmp_path,
+        interval=("discovery_interval_hours = 6", "discovery_interval_hours = 12"),
+        ages=("[1, 6, 24, 72, 168, 720]", "[1, 6]"),
+    )
+    early = datetime(2030, 1, 1, 0, 0, 1, tzinfo=UTC)
+    (job,) = poll_jobs(policy, early, discovered_at=discovery_time(policy, early))
+    assert job.live_only and nominal_poll_times(policy, early) == ()
+    thread = early + 5 * HOUR
+    assert replay_times(policy, early, [thread], latency=timedelta(0)) == (None,)
+    late = datetime(2030, 1, 1, 11, tzinfo=UTC)
+    noon = datetime(2030, 1, 1, 12, tzinfo=UTC)
+    assert nominal_poll_times(policy, late) == (noon, late + 6 * HOUR)
+
+
+def test_unrepresentable_times_are_refused(policy):
+    edge = datetime(9999, 12, 31, 20, tzinfo=UTC)
+    with pytest.raises(ValueError):
+        discovery_time(policy, edge)
+    with pytest.raises(ValueError):
+        poll_jobs(policy, edge, discovered_at=edge)
 
 
 def test_row_beyond_page_cap_never_replay_visible(tmp_path):

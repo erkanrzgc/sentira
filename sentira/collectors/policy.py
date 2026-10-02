@@ -7,6 +7,7 @@ a thread is replay-visible at the poll that would have returned it, plus the job
 latency, and never where no poll would have reached it.
 """
 
+from bisect import bisect_right
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -28,7 +29,10 @@ def discovery_time(policy, published_at):
     published = utc(published_at)
     midnight = datetime.combine(published.date(), datetime.min.time(), tzinfo=UTC)
     ticks = -(-(published - midnight) // interval)
-    return midnight + ticks * interval
+    try:
+        return midnight + ticks * interval
+    except OverflowError:
+        raise ValueError("The discovery time cannot be represented") from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,27 +57,36 @@ def poll_jobs(policy, published_at, *, discovered_at, completed=(), resumed_at=N
         raise ValueError("A video cannot be discovered before publication")
     if resumed_at is not None:
         start = max(start, utc(resumed_at))
-    done = frozenset(completed)
-    if not done <= set(ages):
+    try:
+        nominal = {age: published + age * HOUR for age in ages}
+    except OverflowError:
+        raise ValueError("Poll times cannot be represented") from None
+    done = tuple(completed)
+    if any(type(age) is not int or age not in nominal for age in done):
         raise ValueError("Completed ages must be registered poll ages")
+    if any(nominal[age] > start for age in done):
+        raise ValueError("An age cannot be completed before it is due")
     pending = [age for age in ages if age not in done]
-    due = tuple(age for age in pending if published + age * HOUR <= start)
+    due = tuple(age for age in pending if nominal[age] <= start)
     jobs = []
     if due:
-        last = published + ages[-1] * HOUR
-        jobs.append(PollJob(published, due, start, live_only=start > last))
+        jobs.append(PollJob(published, due, start, live_only=start > nominal[ages[-1]]))
     jobs.extend(
-        PollJob(published, (age,), published + age * HOUR, live_only=False)
+        PollJob(published, (age,), nominal[age], live_only=False)
         for age in pending
-        if published + age * HOUR > start
+        if nominal[age] > start
     )
     return tuple(jobs)
 
 
 def nominal_poll_times(policy, published_at):
-    """Poll times under P with discovery at the first registered tick."""
+    """Poll times under P with discovery at the first registered tick.
+
+    A catch-up after the last registered age is a live observation only, so it
+    is never a replay poll; it can arise where discovery is slower than the ages.
+    """
     jobs = poll_jobs(policy, published_at, discovered_at=discovery_time(policy, published_at))
-    return tuple(job.due_at for job in jobs)
+    return tuple(job.due_at for job in jobs if not job.live_only)
 
 
 def replay_times(policy, video_published_at, comments_published, *, latency):
@@ -93,23 +106,22 @@ def replay_times(policy, video_published_at, comments_published, *, latency):
     times = [utc(value) for value in comments_published]
     if any(value < video for value in times):
         raise ValueError("A thread cannot precede its video")
-    newest_first = sorted(range(len(times)), key=lambda index: times[index], reverse=True)
+    order = sorted(range(len(times)), key=lambda index: times[index])
+    ordered = [times[index] for index in order]
     result = [None] * len(times)
     limit = policy.per_poll_limit
     newest_seen = None
     for poll in nominal_poll_times(policy, video):
-        candidates = [
-            index
-            for index in newest_first
-            if times[index] <= poll and (newest_seen is None or times[index] > newest_seen)
-        ]
-        if not candidates:
+        # Unseen threads listable at this poll occupy positions [low, high).
+        high = bisect_right(ordered, poll)
+        low = 0 if newest_seen is None else bisect_right(ordered, newest_seen)
+        if high <= low:
             continue
-        returned = candidates[:limit]
-        if len(candidates) > limit:
-            boundary = times[candidates[limit]]
-            returned = [index for index in returned if times[index] != boundary]
-        for index in returned:
-            result[index] = poll + latency
-        newest_seen = times[candidates[0]]
+        returned = range(max(low, high - limit), high)
+        if high - low > limit:
+            boundary = ordered[high - limit - 1]
+            returned = [position for position in returned if ordered[position] != boundary]
+        for position in returned:
+            result[order[position]] = poll + latency
+        newest_seen = ordered[high - 1]
     return tuple(result)

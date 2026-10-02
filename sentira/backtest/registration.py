@@ -13,13 +13,7 @@ from itertools import product
 from pathlib import Path
 
 from sentira.core.document import utc, valid_hash
-from sentira.core.registration import digest, exact, sequence, slug
-
-
-def integer(value, low, high):
-    if type(value) is not int or not low <= value <= high:
-        raise ValueError("A bounded integer is required")
-    return value
+from sentira.core.registration import digest, exact, integer, sequence, slug
 
 
 def multiplier(value):

@@ -15,6 +15,7 @@ T0 = datetime(2030, 1, 1, 12, tzinfo=UTC)
 
 def policy(tmp_path, retrieval):
     text = POLICY.read_text(encoding="utf-8")
+    assert "retrieval = 3000\n" in text and "daily_units = 10000" in text
     text = text.replace("retrieval = 3000\n", f"retrieval = {retrieval}\n")
     text = text.replace("daily_units = 10000", f"daily_units = {7000 + retrieval}")
     path = tmp_path / "quota.toml"
