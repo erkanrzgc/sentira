@@ -1322,3 +1322,17 @@ of the revised code each fail at least one test; the snapshot mutation first
 survived and a direct provider test was added for it.
 610 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+## Operator decision on the licence, 2026-10-02
+
+The repository is public, while the README declared it proprietary. Asked about a
+licence, the operator compared a proprietary licence with a private repository,
+a non-commercial source-available licence, AGPL-3.0 and Apache-2.0, and chose
+AGPL-3.0-only: a modified version offered to users over a network must offer its
+source under the same licence, while the copyright holder may still license on
+other terms. `LICENSE` holds the licence text, taken from GitHub's licence
+repository and checked word for word against the SPDX copy (the only difference is
+`https` in place of `http` in the licence's own URLs). The README and the package
+metadata (`License-Expression: AGPL-3.0-only`, setuptools 77 or later) now state
+it. The licence grants no rights to third-party data or platform content. No code
+changed.
