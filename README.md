@@ -159,9 +159,12 @@ Implemented in the offline foundation:
 sentira/
   core/         Document envelope, HMAC identity boundary, synthetic evidence,
                 procedural case records and registration helpers
-  config/       target, briefing and case configuration, schema-validated
-  storage/      document schema, observation snapshots, strict as-of reads and
-                the synthetic evidence ledger
+  config/       target, briefing, case and quota-policy configuration,
+                schema-validated
+  storage/      document schema, observation snapshots, strict as-of reads,
+                the synthetic evidence ledger and the quota ledger
+  collectors/   metered client: every call debited before it is made
+                (synthetic transports only; no source adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   backtest/     locked surge registration and per-cell positive counts
@@ -172,7 +175,7 @@ Planned, not yet implemented:
 
 ```
 sentira/
-  collectors/   per-source adapters with quota accounting for metered APIs
+  collectors/   per-source adapters behind the metered client
   nlp/          normalisation, relevance, integrity screening, sentiment,
                 target-based stance, aspect extraction
   series/       series construction from collected rows and multi-source fusion
@@ -312,6 +315,17 @@ backtestable. Counting recomputes the measured addendum from the series and
 refuses any difference. The measurement rules are a proposal for synthetic
 development; topic assignment and integrity screens are not implemented, and
 visibility is strict observation time only. See the [surge-counting design](docs/superpowers/specs/2026-10-02-surge-counting.md).
+
+## Quota ledger
+
+The metered client in `collectors/quota.py` debits the persistent ledger before
+every call and settles the outcome afterwards; a failed call stays spent. The
+policy (`examples/synthetic-quota.toml`) fixes the daily units, the live,
+retrieval, survival and buffer reservations, the quota-day offset and the
+registered read-only endpoints; search is always refused. Retrieval cannot spend
+the live reservation, and on exhaustion `drain` stops cleanly and keeps what it
+collected. Only synthetic transports exist; no API client or credential is
+implemented. See the [quota-ledger design](docs/superpowers/specs/2026-10-02-quota-ledger.md).
 
 ## Generate a synthetic briefing
 

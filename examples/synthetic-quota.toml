@@ -1,0 +1,21 @@
+# Fictional development quota policy for the metered client. Reservations follow
+# the calculated table in docs/FEASIBILITY.md. The provider's quota-day boundary is
+# a registered input here, not a verified fact.
+mode = "synthetic"
+version = "synthetic-quota-1"
+daily_units = 10000
+quota_day_utc_offset_minutes = 0
+
+[reservations]
+live = 6000
+retrieval = 3000
+survival = 500
+buffer = 500
+
+[buffer]
+purposes = ["live"]
+
+[endpoints]
+"playlistItems.list" = 1
+"commentThreads.list" = 1
+"videos.list" = 1
