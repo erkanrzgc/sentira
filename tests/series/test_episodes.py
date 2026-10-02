@@ -176,6 +176,16 @@ def test_no_onset_during_refractory_period(locked):
     assert all(e.onset_at >= first.ended_at + timedelta(hours=72) for e in episodes[1:])
 
 
+def test_baseline_includes_late_rows_for_past_days(locked):
+    # Fourteen days at 24 and thirteen at 96; the 96 rows of the last baseline day
+    # arrive at noon on day 29. Once visible they raise the median from 24 to 60,
+    # so the noon trailing count of 84 no longer reaches 2 x baseline.
+    observations = rows(START, 14 * 24, 1) + rows(START + timedelta(days=14), 13 * 24, 4)
+    observations += rows(DAY - timedelta(days=1), 24, 4, visible_at=DAY + 12 * HOUR)
+    observations += rows(DAY, 24, 3)
+    assert detect(locked, observations, end=DAY + timedelta(days=3)) == ()
+
+
 def test_detection_requires_locked_registration_grid_cell_and_hour_bounds(locked):
     from sentira.backtest.registration import Cell
     from sentira.series.episodes import Observation, detect_episodes

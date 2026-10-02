@@ -7,12 +7,15 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from sentira.backtest.positives import count_grid, render_count, select_cell
+from sentira.backtest.registration import load_locked
 from sentira.config.briefing import load_config
 from sentira.config.cases import load_cases
 from sentira.core.document import utc
 from sentira.core.evidence import load_evidence
 from sentira.report.briefing import render_briefing
 from sentira.report.cases import render_cases
+from sentira.series.synthetic import load_series
 from sentira.storage.evidence import EvidenceLedger
 
 
@@ -47,9 +50,15 @@ def main(argv=None):
     for option in ("input", "cutoff", "issued-at", "output"):
         cases.add_argument(f"--{option}", required=True)
     cases.add_argument("--overwrite", action="store_true")
+    counting = commands.add_parser("count", help="Count surges in a fictional series")
+    for option in ("registration", "measured", "lock", "series", "output"):
+        counting.add_argument(f"--{option}", required=True)
+    counting.add_argument("--overwrite", action="store_true")
     args = parser.parse_args(argv)
     if args.command == "case-report":
         return case_report(args)
+    if args.command == "count":
+        return count(args)
     try:
         directory, evidence_path = Path(args.config).resolve(), Path(args.evidence).resolve()
         output = Path(args.output).resolve()
@@ -101,6 +110,32 @@ def case_report(args):
         )
         return 1
     print("Synthetic case report written.")
+    return 0
+
+
+def count(args):
+    try:
+        inputs = [
+            Path(getattr(args, name)).resolve()
+            for name in ("registration", "measured", "lock", "series")
+        ]
+        output = Path(args.output).resolve()
+        if output in inputs or output.suffix != ".md":
+            raise ValueError("Output must be a separate Markdown file")
+        # The lock is verified before any series is read or counted.
+        locked = load_locked(*inputs[:3])
+        series = load_series(inputs[3])
+        counts = count_grid(series.topics, locked, start=series.start, end=series.end)
+        content = render_count(locked, series, counts, select_cell(counts, locked))
+        write_report(output, content, overwrite=args.overwrite)
+    except (ValueError, OSError):
+        print(
+            "Count refused: check the registration lock, series input and output destination. "
+            "Existing output requires --overwrite.",
+            file=sys.stderr,
+        )
+        return 1
+    print("Synthetic count report written.")
     return 0
 
 

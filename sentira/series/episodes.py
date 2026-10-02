@@ -81,17 +81,22 @@ class _AsOfSeries:
         self._offset = offset
         self.published = []
         self.daily = Counter()
+        # Set when a newly visible row belongs to a day before the current tick's day.
+        self.past_changed = False
 
     def local_date(self, moment) -> date:
         return (moment + self._offset).date()
 
     def advance(self, tick):
+        today = self.local_date(tick)
         while self._cursor < len(self._pending):
             row = self._pending[self._cursor]
             if row.visible_at > tick:
                 break
             insort(self.published, row.published_at)
-            self.daily[self.local_date(row.published_at)] += 1
+            day = self.local_date(row.published_at)
+            self.daily[day] += 1
+            self.past_changed |= day < today
             self._cursor += 1
 
     def count_since(self, moment):
@@ -127,12 +132,19 @@ def detect_episodes(observations, locked, cell, *, start, end):
     max_duration = horizon * surge.max_duration_horizons
     refractory = timedelta(hours=surge.refractory_hours)
 
+    cached = {}
+
     def baseline_at(tick):
+        # Past daily counts change only with a new day or a late row for a past day.
         today = series.local_date(tick)
-        days = [today - DAY * i for i in range(1, surge.baseline_days + 1)]
-        if days[-1] < first_day:
-            return None
-        return float(median(series.daily[day] for day in days))
+        if series.past_changed or cached.get("day") != today:
+            days = [today - DAY * i for i in range(1, surge.baseline_days + 1)]
+            value = None
+            if days[-1] >= first_day:
+                value = float(median(series.daily[day] for day in days))
+            cached.update(day=today, value=value)
+            series.past_changed = False
+        return cached["value"]
 
     def close(state, ended_at, reason):
         if state.tau_k is None:
