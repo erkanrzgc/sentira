@@ -169,7 +169,7 @@ sentira/
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   backtest/     locked surge registration and per-cell positive counts
-  cli.py        briefing, case-report and count commands
+  cli.py        briefing, case-report, measure, lock, count and cost commands
 ```
 
 Planned, not yet implemented:
@@ -338,6 +338,21 @@ a retrieved thread, or none where the page cap or the last poll age would have
 hidden it. Replay is checked against an independent synthetic provider, not
 recorded responses, and is not yet wired into the as-of reader. See the
 [collection-policy design](docs/superpowers/specs/2026-10-02-collection-policy.md).
+
+## Project the quota cost
+
+```bash
+.venv/bin/python -m sentira.cli cost \
+  --policy examples/synthetic-policy.toml --quota examples/synthetic-quota.toml \
+  --volume examples/synthetic-volume.toml --output out/synthetic-cost.md
+```
+
+The command costs policy P on its own schedule against assumed volumes and the
+quota reservations: discovery and polls against the live reservation, and the
+days of retrieval one history-year needs. Every figure is calculated; channels,
+videos per day and threads per video are fictional assumptions until a live run
+measures them. An overrun of the live reservation is stated, never absorbed by
+the buffer. See the [cost-projection design](docs/superpowers/specs/2026-10-02-cost-projection.md).
 
 ## Generate a synthetic briefing
 

@@ -15,8 +15,12 @@ from sentira.backtest.registration import (
     load_registration,
     write_lock,
 )
+from sentira.collectors.cost import project, render_cost
 from sentira.config.briefing import load_config
 from sentira.config.cases import load_cases
+from sentira.config.collection import load_collection_policy
+from sentira.config.quota import load_quota_policy
+from sentira.config.volume import load_volume
 from sentira.core.document import utc
 from sentira.core.evidence import load_evidence
 from sentira.report.briefing import render_briefing
@@ -66,7 +70,13 @@ def main(argv=None):
     locking = commands.add_parser("lock", help="Lock a registration and measured addendum")
     for option in ("registration", "measured", "series", "output"):
         locking.add_argument(f"--{option}", required=True)
+    costing = commands.add_parser("cost", help="Project the quota cost of a policy")
+    for option in ("policy", "quota", "volume", "output"):
+        costing.add_argument(f"--{option}", required=True)
+    costing.add_argument("--overwrite", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "cost":
+        return cost(args)
     if args.command == "measure":
         return measure_addendum(args)
     if args.command == "lock":
@@ -193,6 +203,27 @@ def count(args):
         )
         return 1
     print("Synthetic count report written.")
+    return 0
+
+
+def cost(args):
+    try:
+        inputs = [Path(getattr(args, name)).resolve() for name in ("policy", "quota", "volume")]
+        output = Path(args.output).resolve()
+        if output in inputs or output.suffix != ".md":
+            raise ValueError("Output must be a separate Markdown file")
+        projection = project(
+            load_collection_policy(inputs[0]), load_quota_policy(inputs[1]), load_volume(inputs[2])
+        )
+        write_report(output, render_cost(projection), overwrite=args.overwrite)
+    except (ValueError, OSError, ArithmeticError):
+        print(
+            "Cost projection refused: check the policy, quota and volume inputs and the output "
+            "destination. Existing output requires --overwrite.",
+            file=sys.stderr,
+        )
+        return 1
+    print("Synthetic cost projection written.")
     return 0
 
 

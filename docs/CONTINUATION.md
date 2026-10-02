@@ -1159,3 +1159,31 @@ collectors to the series package. Eighteen mutations of the revised code, the
 three new rules included, each fail at least one test.
 530 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+## Quota cost projection, 2026-10-02
+
+Second part of the pilot preparation. `config/volume.py` validates fictional
+volume assumptions and `collectors/cost.py` projects the daily units of policy *P*
+on its own schedule; the `cost` command writes the report. Design:
+[cost-projection design](superpowers/specs/2026-10-02-cost-projection.md).
+
+| Named test in `tests/collectors/test_cost.py` | Verified contract |
+| --- | --- |
+| `test_shipped_projection_matches_documented_arithmetic` | 240 discovery and 3,600 poll units, 3,840 against 6,000; 661,380 units and 221 days per history-year, as in BACKTEST §B |
+| `test_projection_uses_the_registered_schedule` | With 12-hour discovery and ages of 1 and 6 hours, coalescing gives 1.5 polls per video and 900 poll units |
+| `test_every_call_costs_a_page_even_when_nothing_is_new` | Four polls with no new threads still cost a unit each; a channel with no new videos still costs a discovery page per tick |
+| `test_page_cap_bounds_poll_cost_and_reports_lost_threads` | 2,500 new threads at the first poll cost 10 pages and lose 1,500 threads per video |
+| `test_live_overrun_is_reported_not_hidden` | 200 channels need 12,800 live units; the report states an overrun of 6,800 |
+| `test_missing_retrieval_reservation_is_reported` | A zero retrieval reservation is stated, not divided by |
+| `test_invalid_volume_assumptions_are_refused`, `test_shares_must_match_poll_ages` | Nine invalid assumption files and a share list of the wrong length are refused |
+| `test_report_labels_every_figure_calculated` | The report is byte-identical across runs, labels figures calculated, marks four rows assumed and carries the three input digests |
+| `test_cost_command_writes_report_and_refuses_overwrite` | The command writes once, refuses to replace without `--overwrite` and refuses a non-Markdown output |
+
+Measured: the tests failed at collection before the modules existed. Twelve
+deliberate mutations each fail at least one test: a miscounted discovery tick, the
+page cap ignored, no minimum page per poll or per discovery call, shares read as per-interval instead of
+cumulative, the schedule bypassed, retrieval days rounded down, an overrun hidden,
+lost threads ignored, retrieval playlist pages dropped, share length unchecked and
+decreasing shares accepted. The minimum-page mutation first survived; the
+nothing-new test was added for it. 548 Python tests passed with 96% line and
+branch coverage; ruff check and format passed.
