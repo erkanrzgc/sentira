@@ -64,6 +64,9 @@ synthetic inputs; see the
 The quota arithmetic of §B is reproduced in code by a cost projection over the
 same schedule; its volume inputs remain the unmeasured assumptions of §D. See the
 [cost-projection design](superpowers/specs/2026-10-02-cost-projection.md).
+The pilot registration of §A.9 exists offline with a lock bound to the policy,
+quota and volume files; excluding pilot data from test folds waits for v1. See the
+[pilot-registration design](superpowers/specs/2026-10-02-pilot-registration.md).
 
 ## 0. The point-in-time rule, reconciled with historical retrieval
 

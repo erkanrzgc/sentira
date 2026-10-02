@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from sentira.backtest.measurement import measure, render_measured
+from sentira.backtest.pilot import write_pilot_lock
 from sentira.backtest.positives import count_series, render_count, select_cell
 from sentira.backtest.registration import (
     load_locked,
@@ -74,7 +75,12 @@ def main(argv=None):
     for option in ("policy", "quota", "volume", "output"):
         costing.add_argument(f"--{option}", required=True)
     costing.add_argument("--overwrite", action="store_true")
+    piloting = commands.add_parser("lock-pilot", help="Lock a pilot registration once")
+    for option in ("pilot", "policy", "quota", "volume", "locked-at", "output"):
+        piloting.add_argument(f"--{option}", required=True)
     args = parser.parse_args(argv)
+    if args.command == "lock-pilot":
+        return lock_pilot(args)
     if args.command == "cost":
         return cost(args)
     if args.command == "measure":
@@ -224,6 +230,21 @@ def cost(args):
         )
         return 1
     print("Synthetic cost projection written.")
+    return 0
+
+
+def lock_pilot(args):
+    try:
+        names = ("pilot", "policy", "quota", "volume")
+        inputs = [Path(getattr(args, name)).resolve() for name in names]
+        output = Path(args.output).resolve()
+        if output in inputs:
+            raise ValueError("Output must be a separate lock file")
+        locked_at = utc(datetime.fromisoformat(args.locked_at))
+        write_pilot_lock(*inputs, output, locked_at=locked_at)
+    except (ValueError, OSError, ArithmeticError):
+        return refused("Pilot lock")
+    print("Synthetic pilot lock written.")
     return 0
 
 
