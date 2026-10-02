@@ -323,9 +323,9 @@ every call and settles the outcome afterwards; a failed call stays spent. The
 policy (`examples/synthetic-quota.toml`) fixes the daily units, the live,
 retrieval, survival and buffer reservations, the quota-day offset and the
 registered read-only endpoints; search is always refused. Retrieval cannot spend
-the live reservation, and on exhaustion `drain` stops cleanly and keeps what it
-collected. Only synthetic transports exist; no API client or credential is
-implemented. See the [quota-ledger design](docs/superpowers/specs/2026-10-02-quota-ledger.md).
+the live reservation. `drain` serves one purpose per run, so on exhaustion it
+stops that queue cleanly and hands back what it collected. Only synthetic
+transports exist; no API client or credential is implemented. See the [quota-ledger design](docs/superpowers/specs/2026-10-02-quota-ledger.md).
 
 ## Generate a synthetic briefing
 
