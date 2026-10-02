@@ -217,6 +217,24 @@ def test_case_report_renders_apostrophe_verbatim():
     assert "The authority's notice" in output
 
 
+def test_event_url_must_match_registered_source_host():
+    values = data()
+    values["sources"].append(
+        {
+            "id": "other",
+            "label": "Other fictional body",
+            "institution": "Other fictional authority",
+            "origin_group": "other-body",
+            "url": "https://other.invalid/",
+        }
+    )
+    values["events"][0]["url"] = "https://other.invalid/decision.pdf"
+    with pytest.raises(ValueError, match="registered source"):
+        snapshot(values)
+    values["events"][0]["source_id"] = "other"
+    assert snapshot(values).events[0].source_id == "other"
+
+
 def test_case_report_is_deterministic():
     values = data()
     values["events"].append(event(id="event-b", case_id="case-b"))
