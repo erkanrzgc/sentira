@@ -58,6 +58,9 @@ The quota policy, ledger and metered client also exist offline, with synthetic
 transports only; the ledger sits in `storage/quota.py` rather than
 `collectors/quota.py`, as recorded in the
 [quota-ledger design](superpowers/specs/2026-10-02-quota-ledger.md).
+The polling schedule and replay times of policy *P* exist as pure functions over
+synthetic inputs; see the
+[collection-policy design](superpowers/specs/2026-10-02-collection-policy.md).
 
 ## 0. The point-in-time rule, reconciled with historical retrieval
 

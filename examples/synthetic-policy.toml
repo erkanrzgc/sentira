@@ -1,0 +1,9 @@
+# Fictional development collection policy P (BACKTEST 0.3). The values follow the
+# proposed registration in BACKTEST; none has been measured. Discovery ticks fall
+# on whole multiples of the interval from midnight UTC.
+mode = "synthetic"
+version = "synthetic-policy-1"
+discovery_interval_hours = 6
+poll_ages_hours = [1, 6, 24, 72, 168, 720]
+page_size = 100
+page_cap = 10
