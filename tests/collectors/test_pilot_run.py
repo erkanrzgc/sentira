@@ -25,6 +25,7 @@ SOURCES = {
     "policy": ROOT / "examples/synthetic-policy.toml",
     "quota": ROOT / "examples/synthetic-quota.toml",
     "volume": ROOT / "examples/synthetic-volume.toml",
+    "taxonomy": ROOT / "examples/synthetic-taxonomy.toml",
 }
 START = datetime(2030, 1, 1, tzinfo=UTC)
 LOCKED_AT = datetime(2029, 12, 15, tzinfo=UTC)

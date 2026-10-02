@@ -1374,3 +1374,43 @@ seed mutation first survived because the order still changed; the test now
 compares the documents selected.
 636 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+A high-effort review of the increment raised ten points. Fixed: a stem could cover
+another keyword, so one word counted as several distinct keywords and could win a
+topic on its own; a stem may now cover no other keyword. Recall was unweighted
+over strata sampled at different rates, so with few assigned comments it read
+about 0.9 where the population rate was about 0.3; every rate is now weighted by
+its stratum's population over its sample, with a Wilson interval at the Kish
+effective size. Kappa took lists, so two mappings compared their keys and read
+1.0; it now pairs mappings by item identifier over the re-labelled subset.
+Candidates and reports carried no taxonomy digest; candidates are built from an
+assignment and keep it, and the draw refuses another digest. A short stratum was
+shrunk silently and a document could enter twice; the shortfall is now reported
+and duplicates are refused. A mistyped annotation became a new topic; labels are
+now registered topics or none. Accuracy had no baselines; it is now reported
+beside majority-class and random accuracy, with prevalence and assigned share per
+topic. `frozen_at` was never enforced; the pilot lock now records the taxonomy
+digest as its sixth input (schema 2, `--taxonomy`) and is refused before the
+freeze. Matching and case folding were rebuilt per comment; both are now cached
+per taxonomy. Not changed: the withheld share of §0.4, which the strict rule
+cannot produce, because storage refuses a row updated after it was observed; it
+is reported with the replay carve-out.
+
+| Named test | Verified contract |
+| --- | --- |
+| `eval/test_topic_audit.py::test_recall_is_weighted_by_stratum_population` | Ten found at weight 10 and five missed at weight 100 give recall 1/6, not 2/3; effective size 600² / 51,000 |
+| `::test_accuracy_is_reported_beside_its_baselines` | Accuracy, majority-class accuracy and the random assigner's expected accuracy match worked values |
+| `::test_annotation_labels_must_be_registered_topics` | A mistyped, empty or non-text label is refused |
+| `::test_short_stratum_is_reported_not_hidden` | A stratum below the registered size is taken whole and its shortfall recorded |
+| `::test_draw_refuses_duplicates_foreign_digests_and_unknown_topics` | A repeated document, another taxonomy digest, an unregistered taxonomy and an unregistered topic are refused |
+| `::test_candidate_carries_the_assignment_digest` | A candidate keeps its assignment's digest; another document or a publication is refused |
+| `backtest/test_pilot.py::test_pilot_lock_binds_a_taxonomy_frozen_before_it` | A taxonomy frozen at the lock time is accepted, one second later refused |
+
+Twenty-two mutations of the revised code each fail at least one test, among them
+unweighted rates, the Kish size replaced by the item count, kappa paired by
+position, the majority and random baselines miscomputed, the shortfall hidden,
+the freeze unchecked and the taxonomy digest left out of the lock check. Two first
+survived: the registered-digest check, masked by the candidate check, and accuracy,
+whose worked value a wrong rule happened to match; both tests were sharpened.
+649 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.

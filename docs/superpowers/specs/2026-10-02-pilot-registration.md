@@ -42,13 +42,15 @@ sample is written into the lock and recomputed on loading.
 
 The lock is JSON written with exclusive creation, creating its directory if
 needed. It records the digests of the pilot, channel frame, collection policy,
-quota policy and volume assumptions, the drawn sample, the lock time with its
-source, and the projected pilot cost. Loading recomputes all of them, with strict
-types.
+quota policy, volume assumptions and topic taxonomy, the drawn sample, the lock
+time with its source, and the projected pilot cost. Loading recomputes all of
+them, with strict types. The taxonomy digest was added by the topic-taxonomy
+review, which raised the lock schema to 2.
 
 | Rule | Behaviour |
 |---|---|
 | Order | The lock time must lie between registration and collection start |
+| Taxonomy | The taxonomy must be frozen at or before the lock time, so no topic is written after the pilot has seen data |
 | Time source | Without `--locked-at` the system clock is used and recorded as `system`; a typed time is recorded as `declared`. A declared time is a statement, not evidence of order: a live pilot must use the system clock and anchor the lock outside the repository before collection |
 | Cost | With the pilot's channel count, live units per day × live days plus the retrieval of exactly the history span (every thread page and each channel's playlist pages, at least one each). A projection above the ceiling is refused |
 | Integrity | A changed input file, sample, projection, lock time or time source, a value of the wrong type or an unknown lock field is refused |
@@ -80,6 +82,7 @@ For the example (12 channels, 14 live days, 28 history days) the projection is
 | The live run covers latency measurement | `test_live_days_cover_latency_measurement` |
 | The lock lies between registration and collection start | `test_pilot_lock_window_runs_from_registration_to_collection_start` |
 | No lock above the ceiling | `test_pilot_lock_refuses_projected_cost_above_ceiling` |
+| No lock before the taxonomy is frozen | `test_pilot_lock_binds_a_taxonomy_frozen_before_it` |
 | Any changed input is refused | `test_changed_input_refused_after_lock` |
 | A tampered lock record is refused | `test_tampered_lock_record_refused` |
 | A lock is never replaced | `test_pilot_lock_never_overwritten` |

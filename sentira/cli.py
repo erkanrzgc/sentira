@@ -76,7 +76,7 @@ def main(argv=None):
         costing.add_argument(f"--{option}", required=True)
     costing.add_argument("--overwrite", action="store_true")
     piloting = commands.add_parser("lock-pilot", help="Lock a pilot registration once")
-    for option in ("pilot", "channels", "policy", "quota", "volume", "output"):
+    for option in ("pilot", "channels", "policy", "quota", "volume", "taxonomy", "output"):
         piloting.add_argument(f"--{option}", required=True)
     # Without it the system clock is used; a declared time is labelled as such.
     piloting.add_argument("--locked-at")
@@ -237,7 +237,7 @@ def cost(args):
 
 def lock_pilot(args):
     try:
-        names = ("pilot", "channels", "policy", "quota", "volume")
+        names = ("pilot", "channels", "policy", "quota", "volume", "taxonomy")
         inputs = [Path(getattr(args, name)).resolve() for name in names]
         output = Path(args.output).resolve()
         if output in inputs:
@@ -249,9 +249,10 @@ def lock_pilot(args):
         write_pilot_lock(*inputs, lock_path=output, locked_at=locked_at, source=source)
     except (ValueError, OSError, ArithmeticError):
         print(
-            "Pilot lock refused: check the pilot, channel frame, policy, quota and volume "
-            "files, the lock time against registration and collection start, the projected "
-            "cost against the ceiling, and the output. Existing locks are never replaced.",
+            "Pilot lock refused: check the pilot, channel frame, policy, quota, volume and "
+            "taxonomy files, the lock time against registration, collection start and the "
+            "taxonomy freeze, the projected cost against the ceiling, and the output. "
+            "Existing locks are never replaced.",
             file=sys.stderr,
         )
         return 1

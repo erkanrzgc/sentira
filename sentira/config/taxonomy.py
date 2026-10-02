@@ -10,6 +10,7 @@ applied before lower-casing, so the matching rule is data rather than code.
 import tomllib
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
 from sentira.core.document import utc
@@ -74,6 +75,12 @@ class Taxonomy:
             raise ValueError("A keyword may belong to one topic only")
         if any(self.normalise(keyword) != keyword for keyword in keywords):
             raise ValueError("Keywords must be written in their normalised form")
+        # One word may match at most one keyword: a stem may not cover another
+        # keyword, in its own topic or any other.
+        for stem in (keyword[:-1] for keyword in keywords if keyword.endswith("*")):
+            for keyword in keywords:
+                if keyword != stem + "*" and keyword.rstrip("*").startswith(stem):
+                    raise ValueError("A stem covers another keyword")
 
     @classmethod
     def from_mapping(cls, raw):
@@ -99,7 +106,12 @@ class Taxonomy:
 
     def normalise(self, text):
         """Fold registered characters, then lower-case."""
-        return text.translate({ord(source): target for source, target in self.case_map}).lower()
+        return text.translate(_fold_table(self.case_map)).lower()
+
+
+@lru_cache(maxsize=32)
+def _fold_table(case_map):
+    return {ord(source): target for source, target in case_map}
 
 
 def load_taxonomy(path):
