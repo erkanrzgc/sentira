@@ -1050,3 +1050,45 @@ in `test_open_episode_below_k_is_unresolved` moved from the maximum duration to 
 quiet end at 50 hours accordingly. Both expectations failed before the change. No
 other label or count changed, and the shipped measured addendum still reproduces
 byte for byte. Measured: 474 Python tests passed.
+
+## Quota ledger and metered client, 2026-10-02
+
+Second step of the plan approved on 2 October 2026. The binding rules "no endpoint
+outside the registered set" and "the quota ledger is debited before each call" now
+have code and named tests, with synthetic transports only. `config/quota.py`
+validates the policy, `storage/quota.py` keeps the persistent ledger (the database
+driver stays in storage) and `collectors/quota.py` provides the metered client and
+`drain`. The example policy `examples/synthetic-quota.toml` carries the calculated
+reservations of BACKTEST §B: 6,000 live, 3,000 retrieval, 500 survival and 500
+buffer units, with only live collection allowed into the buffer. No API client,
+credential or collection is added. Design and deviations:
+[quota-ledger design](superpowers/specs/2026-10-02-quota-ledger.md).
+
+| Named test | Verified contract |
+| --- | --- |
+| `collectors/test_quota.py::test_shipped_policy_matches_the_calculated_reservations` | The example policy validates with the calculated reservations; `search.list` has no cost |
+| `::test_policy_reservations_must_sum_to_daily_units` | Eleven invalid policies are refused, including a negative reservation whose total still matches and a registered write method |
+| `::test_ledger_debited_before_call` | The transport sees a pending debit for its own endpoint on every call |
+| `::test_ledger_units_equal_calls_made` | Over 200 seeded random calls: 85 debits, 85 transport calls, equal units, 115 refusals, 3 failures |
+| `::test_exhaustion_stops_cleanly_and_persists_collected` | With 5 retrieval units, `drain` stops after 5 of 10 requests; the 5 results and debits persist across reopening |
+| `::test_drain_reports_completion_when_quota_suffices` | All requests served gives no stop reason |
+| `::test_retrieval_cannot_spend_live_reservation` | Retrieval and survival stop at their reservations; live then spends its own and the buffer only |
+| `::test_unregistered_endpoint_refused_before_any_debit` | `search.list`, an unregistered list method, a write method and an unknown purpose leave no debit and no call |
+| `::test_quota_day_resets_at_registered_offset` | At an offset of −480 minutes the quota day turns over at 08:00 UTC, not at 07:59:59 |
+| `::test_debits_survive_reopen_and_refuse_clock_regression` | Outcomes persist; settling twice, a clock one second earlier and a changed policy are refused |
+| `::test_failed_call_still_spends_units` | A failing transport leaves a failed debit that still counts towards the day |
+| `storage/test_quota_ledger.py::test_two_handles_cannot_overspend_a_reservation` | Two handles on one file share 3 units; the fourth debit is refused |
+| `::test_pending_debit_counts_as_spent_after_reopen` | A debit left pending by a stopped process still counts |
+| `::test_ledger_refuses_a_foreign_database` | The ledger and document storage refuse each other's files |
+| `::test_settle_and_inputs_are_validated` | Unknown debit ids, non-boolean outcomes, the buffer as a purpose, a closed ledger, an invalid policy and a naive clock are refused |
+
+Measured: the 18 initial quota tests failed before the modules existed. Thirteen
+deliberate mutations each fail at least one test: debiting after the call, no
+reservation check, the buffer open to every purpose, cost 1 for unregistered
+endpoints, a quota day that ignores the offset, failed debits excluded from the
+spend, no clock check, no policy check, no reservation-sum check, negative
+reservations allowed, write methods registrable, `drain` not catching exhaustion
+and a per-handle spend cache. The two-handle test runs in one process; parallel
+processes rely on SQLite immediate transactions and are not tested. 499 Python
+tests passed with 96% line and branch coverage; ruff check and format and the 14
+Node tests passed.

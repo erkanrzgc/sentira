@@ -51,9 +51,13 @@ lifecycle. Production ingestion remains disabled until that design is resolved.
 
 A synthetic, offline subset of Phase 1 now exists: a locked surge registration,
 episode detection on strict as-of series and per-cell counts. Its deviations
-from the file list below (TOML, content digests, a fixed calendar offset and a
+from the file list below (TOML, content digests, a fixed calendar offset and
 proposed measurement rules) are recorded in the
 [surge-counting design](superpowers/specs/2026-10-02-surge-counting.md).
+The quota policy, ledger and metered client also exist offline, with synthetic
+transports only; the ledger sits in `storage/quota.py` rather than
+`collectors/quota.py`, as recorded in the
+[quota-ledger design](superpowers/specs/2026-10-02-quota-ledger.md).
 
 ## 0. The point-in-time rule, reconciled with historical retrieval
 
