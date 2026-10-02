@@ -64,9 +64,11 @@ provenance only and is not visible to the feature reader.
 - The database is local, single-threaded per repository instance and disposable.
   It stores first-seen synthetic text without a production refresh/deletion system.
   Snapshot conflicts at the same document/time/metric fail atomically.
-- No historical replay, quota ledger, scheduling, registration execution, topic
-  classification, integrity screening, language model or numerical forecast exists.
-  A separate synthetic scenario report is implemented as described below.
+- No historical replay, scheduling, topic classification, integrity screening,
+  language model or numerical forecast exists. Later sections add a locked
+  synthetic surge registration with counts and a quota ledger with synthetic
+  transports only. A separate synthetic scenario report is implemented as
+  described below.
 - No retention, backup expiry, output suppression, text redaction or client access
   control has been implemented. Do not use this foundation to store real content.
 - Numerical pilot budgets, output suppression thresholds and real entity evidence
