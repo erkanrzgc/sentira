@@ -226,6 +226,10 @@ class QuotaLedger:
 
         self._write(operation)
 
+    @property
+    def policy(self):
+        return self._policy
+
     def debits(self):
         rows = self._connection().execute(
             "SELECT id, quota_day, purpose, pool, endpoint, units, debited_at, policy_sha256, "
