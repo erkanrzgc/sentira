@@ -773,3 +773,50 @@ missing and duplicated attributes are rejected in negative test cases. This is
 not an HTML parser. Verification: 392 Python tests and 10 combined Node tests
 passed; Ruff lint and format passed. Independent review confirmed the application
 tests exercise actual callbacks and state retention with explicit mock limits.
+
+## Linux checks, continuous integration and audit fixes, 2026-10-02
+
+The offline checks now run on Linux with an explicitly named Python 3.12
+interpreter, and `.github/workflows/ci.yml` runs the same pinned commands on every
+push and pull request: tests with branch coverage, Ruff lint and format, and the
+two Node.js review-screen suites. Measured on the first workflow run: all steps
+passed on the hosted Linux runner.
+
+A full audit of the package and experiments then found one medium and several
+low-severity defects. Each fix below first failed its named regression test.
+
+| Named regression test | Verified contract |
+| --- | --- |
+| `tests/briefing/test_pipeline.py::test_apostrophe_renders_without_broken_entity` | Apostrophes render literally; no `&#x27;` entity text in briefings |
+| `tests/cases/test_cases.py::test_case_report_renders_apostrophe_verbatim` | The same rule holds in case reports, which share the escaper |
+| `tests/experiments/test_field_review.py::test_report_renders_apostrophe_verbatim` | The field-review report escaper, also used by eligibility reports |
+| `tests/cases/test_cases.py::test_event_url_must_match_registered_source_host` | A case event link must share the host of its registered source |
+| `tests/experiments/test_ocr_runner.py::test_lock_rejects_escaping_file_without_writing_lock` | An escaping registered name is refused before any lock file is written |
+| `tests/experiments/test_ocr_runner.py::test_engine_error_with_invalid_utf8_keeps_engine_error` | Undecodable output from a failed run stays an engine error |
+| `tests/experiments/test_review_screen.py::test_template_slots_filled_once` | Each template slot is filled once; inserted scripts are never rescanned |
+| `tests/experiments/review_screen.test.cjs`: `unpaired surrogates are refused before export` | Text the Python TOML validator would reject is refused in the browser |
+| `tests/experiments/review_screen_app.test.cjs`: `a successful download clears the unload warning until the next edit` | No unload warning after a successful export; a later edit restores it |
+| `tests/experiments/review_screen_app.test.cjs`: `a valid download clears a stale error message` | Previously untested: the export's own error reset |
+| `tests/experiments/review_screen_app.test.cjs`: `pagehide pauses a running timer` | Previously untested: the pagehide listener, with a mutation check |
+
+The apostrophe defect was visible in the shipped synthetic briefing, where
+`A's` rendered as entity text. Changing `experiments/ocr/run.py` changes its
+registered code digest, so previously locked OCR fixtures must be registered
+again before `compare` accepts them; this is the intended lock behaviour.
+
+Measured: 399 Python tests passed with 94.47% combined statement and branch
+coverage; 14 Node tests passed; Ruff lint and format passed for 89 files. Both CLI
+examples were regenerated without error.
+
+An assistant-run browser smoke test opened a generated review screen for a
+two-page synthetic fixture in headless Chromium over a local HTTP server. Measured:
+24 of 24 scripted checks passed, covering page navigation, retained decisions,
+zoom, a blocked invalid export, a valid download, the timer, a 390-pixel layout
+without horizontal overflow and the unload warning after a post-download edit. The
+downloaded decisions passed the existing Python report validator. The script is
+not committed and cannot be repeated from this repository. The visibility-event
+pause was not exercised in the browser, and the check is not human evaluation.
+
+Not changed: the name `decisions_sha256` still denotes two different digests in
+the field-review output and the eligibility context, as the eligibility README
+explains, and export errors do not yet name the affected field.
