@@ -67,15 +67,20 @@ registered order:
    margin, and a size floor above trailing-window noise.
 2. **Episodes.** The primary *m* and κ with these thresholds and the largest
    registered horizon, so that the maximum duration does not cut decay short.
-3. **Half-life and horizon.** For each episode, hours from the last peak of the
-   hourly excess rate to the first hour at or below half of it; episodes without an
-   observed decay are excluded. *H* is the smallest registered horizon at least the
+3. **Half-life and horizon.** For each episode, the hourly excess rate runs from
+   the trailing window that opened it to its end, so the hours that triggered onset,
+   often the peak itself, are included. The half-life is the hours from the last
+   peak to the first hour at or below half of it; episodes without an observed decay
+   are excluded. *H* is the smallest registered horizon at least the
    registered multiple of the median half-life, otherwise the largest. With fewer
    than the registered minimum of half-lives, *H* is the largest horizon.
 
 The addendum records the pre-origin digest, *M*, MAD and the half-life count and
-median beside the thresholds. `count` recomputes the addendum from the counted
-series and refuses any difference, so neither a different pre-origin span nor a
+median beside the thresholds. A locked addendum must be internally consistent: a
+half-life is present exactly when enough were measured, and *H* follows from it.
+`lock` recomputes the addendum from the series and refuses to lock one that does
+not reproduce or whose pre-origin span is incomplete (§A.9). `count` recomputes it
+again from the counted series and refuses any difference, so neither a different pre-origin span nor a
 hand-edited value can be counted, even after relocking. These rules are a proposal
 for synthetic development; the confirmatory v1 rules require operator approval
 before they are locked. The workflow is `measure`, then `lock`, then `count`.
@@ -140,6 +145,17 @@ counts distinct test folds, ⌊(τ_k − *O*1) / fold⌋, that contain a positiv
 | No addendum before the pre-origin span is complete | `::test_addendum_refused_until_preorigin_span_complete` |
 | Counting refuses an addendum that does not reproduce | `::test_count_refuses_when_preorigin_data_differs_from_measurement` |
 | The shipped addendum reproduces byte for byte | `::test_shipped_measured_addendum_reproduces`, `::test_measure_lock_count_workflow` |
+| The hour that opened an episode is in its half-life | `::test_half_life_includes_the_hour_that_opened_the_episode` |
+| A lock certifies a reproducible addendum | `::test_lock_refuses_addendum_that_does_not_reproduce` |
+| A locked addendum is internally consistent | `backtest/test_registration.py::test_measured_half_life_and_horizon_must_be_consistent` |
+
+## Open question
+
+With a zero rolling baseline the quiet end rule cannot fire, since no count is
+below zero, so episodes on sparse topics run to the maximum duration and delay the
+next onset by 2*H* plus the refractory period. This is the literal registered
+definition. Changing it, for example to "at or below" a zero baseline, is a
+methodological decision for the operator before v1 and is not made here.
 
 Outside this increment: collectors, the quota ledger, topic assignment, integrity
 screens, λ, the MDE, survival, walk-forward evaluation and any accuracy figure.

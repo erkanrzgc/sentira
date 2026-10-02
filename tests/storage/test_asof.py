@@ -137,3 +137,10 @@ def test_cursor_and_reader_agree_on_visibility(document):
             assert {d.doc_hash for d in reader.read(boundary).documents} <= seen
         with pytest.raises(ValueError, match="backwards"):
             cursor.advance(start)
+        # AsOfReader also requires updated_at <= T; storage makes that implied by
+        # refusing any row whose update time follows its observation time.
+        late_edit = replace(
+            document, doc_hash="f" * 64, updated_at=now["value"] + timedelta(hours=1)
+        )
+        with pytest.raises(ValueError, match="update"):
+            repo.ingest(late_edit)

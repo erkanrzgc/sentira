@@ -9,7 +9,12 @@ from pathlib import Path
 
 from sentira.backtest.measurement import measure, render_measured
 from sentira.backtest.positives import count_series, render_count, select_cell
-from sentira.backtest.registration import load_locked, load_registration, write_lock
+from sentira.backtest.registration import (
+    load_locked,
+    load_measured,
+    load_registration,
+    write_lock,
+)
 from sentira.config.briefing import load_config
 from sentira.config.cases import load_cases
 from sentira.core.document import utc
@@ -59,7 +64,7 @@ def main(argv=None):
     for option in ("registration", "series", "output"):
         measuring.add_argument(f"--{option}", required=True)
     locking = commands.add_parser("lock", help="Lock a registration and measured addendum")
-    for option in ("registration", "measured", "output"):
+    for option in ("registration", "measured", "series", "output"):
         locking.add_argument(f"--{option}", required=True)
     args = parser.parse_args(argv)
     if args.command == "measure":
@@ -151,11 +156,15 @@ def measure_addendum(args):
 def lock_registration(args):
     try:
         registration, measured = Path(args.registration).resolve(), Path(args.measured).resolve()
-        output = Path(args.output).resolve()
-        if output in (registration, measured):
+        source, output = Path(args.series).resolve(), Path(args.output).resolve()
+        if output in (registration, measured, source):
             raise ValueError("Output must be a separate lock file")
+        # A lock certifies an addendum computed from a complete pre-origin span.
+        expected = measure(load_series(source), load_registration(registration))
+        if expected != load_measured(measured):
+            raise ValueError("The measured addendum does not reproduce from the series")
         write_lock(registration, measured, output)
-    except (ValueError, OSError):
+    except (ValueError, OSError, ArithmeticError):
         return refused("Lock")
     print("Synthetic registration lock written.")
     return 0

@@ -93,9 +93,8 @@ def count_grid(series, locked, *, start, end, cells=None):
 
 def count_series(series, locked):
     """Count a synthetic series whose pre-origin span reproduces the locked addendum."""
-    if series.start != locked.registration.walk_forward.history_start:
-        raise ValueError("The series must start at the registered history start")
-    # The addendum must be exactly what the registered rules give for this data.
+    # The addendum must be exactly what the registered rules give for this data;
+    # measure() also refuses a series that does not start at D0 or reach O1.
     if measure(series, locked.registration) != locked.measured:
         raise ValueError("The measured addendum does not reproduce from the pre-origin span")
     return count_grid(series.topics, locked, start=series.start, end=series.end)

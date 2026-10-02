@@ -1002,3 +1002,33 @@ seven deliberate mutations (no recomputation in `count`, an unscaled MAD, the fi
 instead of the last peak, a strict half threshold, a strict horizon threshold,
 admitting rows published at *O*1 and no completeness check) each fail at least one
 test. Two `count` runs on the example produced identical bytes.
+
+## Second review: half-life window, certifying locks and consistency, 2026-10-02
+
+A high-effort review of `14e76a7..c0f59b3` produced ten findings; two were
+reproduced by the reviewer. Fixed:
+
+| Named test | Verified contract |
+| --- | --- |
+| `tests/backtest/test_measurement.py::test_half_life_includes_the_hour_that_opened_the_episode` | A spike in the hour before onset is the peak; previously no half-life was found, so fast decays were dropped and *H* was biased upwards |
+| `::test_half_life_recovered_on_synthetic_decay` (tightened) | Half-lives of 6 h and 20 h are now recovered exactly, not within one hour |
+| `::test_lock_refuses_addendum_that_does_not_reproduce` | `lock` refuses the hand-chosen fixture and an incomplete pre-origin span; a lock now certifies a reproducible addendum (§A.9) |
+| `tests/backtest/test_registration.py::test_measured_half_life_and_horizon_must_be_consistent` | A half-life without enough episodes, a horizon that does not follow from it, a zero half-life and a missing half-life are rejected |
+| `::test_unrepresentable_history_start_is_rejected_not_raised` | An unrepresentable history start is a validation error, not an uncaught overflow |
+| `tests/storage/test_asof.py::test_cursor_and_reader_agree_on_visibility` (extended) | Storage refuses a row updated after its observation, which is why the reader's extra `updated_at <= T` clause is implied |
+
+Also: the cursor computes its sort keys once; a duplicated start check and a
+duplicated hour constant were removed. With the corrected window the example
+addendum records five half-lives instead of the four reported in the previous
+section; that earlier figure came from the biased rule and is superseded. The
+median stays 1 hour and *H* 24 hours, and the example report is unchanged: 2
+positives and 2 negatives in the primary cell's test span.
+
+Not changed, with reasons: the quiet end rule at a zero baseline follows the
+registered definition and is recorded as an open question in the specification;
+replaying the pre-origin span once for measurement and once for counting is kept
+because both reads go through the one visibility rule, at a measured cost below a
+second for the example. Measured: the new tests failed before their fixes; five
+deliberate mutations (half-life from onset, a lock without recomputation, no
+half-life consistency, no horizon consistency, an unconverted overflow) each fail
+at least one test. 473 Python tests passed.

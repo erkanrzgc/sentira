@@ -293,7 +293,8 @@ to repeat the first two steps, write to new paths:
   --series examples/synthetic-series.toml --output out/measured.toml
 ./.venv/Scripts/python.exe -m sentira.cli lock `
   --registration examples/synthetic-registration.toml `
-  --measured out/measured.toml --output out/registration.lock
+  --measured out/measured.toml --series examples/synthetic-series.toml `
+  --output out/registration.lock
 ./.venv/Scripts/python.exe -m sentira.cli count `
   --registration examples/synthetic-registration.toml `
   --measured examples/synthetic-measured.toml `

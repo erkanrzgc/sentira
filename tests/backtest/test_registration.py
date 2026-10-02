@@ -168,3 +168,34 @@ def test_first_origin_is_registered_constant(tmp_path):
         rewrite(registration, old, new)
         with pytest.raises(ValueError):
             load_registration(registration)
+
+
+def test_unrepresentable_history_start_is_rejected_not_raised(tmp_path):
+    from sentira.backtest.registration import load_registration
+
+    registration, _, _ = copies(tmp_path)
+    rewrite(
+        registration, "history_start = 2030-01-01T00:00:00Z", "history_start = 9999-12-31T22:00:00Z"
+    )
+    rewrite(registration, "calendar_utc_offset_minutes = 0", "calendar_utc_offset_minutes = 120")
+    with pytest.raises(ValueError):
+        load_registration(registration)
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("half_life_episodes = 3", "half_life_episodes = 2"),
+        ("horizon_hours = 72", "horizon_hours = 24"),
+        ("half_life_hours = 20.0", "half_life_hours = 0.0"),
+        ("half_life_hours = 20.0\n", ""),
+    ],
+)
+def test_measured_half_life_and_horizon_must_be_consistent(tmp_path, old, new):
+    from sentira.backtest.registration import write_lock
+
+    registration, measured, lock = copies(tmp_path)
+    rewrite(measured, old, new)
+    with pytest.raises(ValueError):
+        write_lock(registration, measured, lock)
+    assert not lock.exists()
