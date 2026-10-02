@@ -69,6 +69,9 @@ quota and volume files; excluding pilot data from test folds waits for v1. See t
 [pilot-registration design](superpowers/specs/2026-10-02-pilot-registration.md).
 A locked pilot runs end to end against a synthetic provider only; see the
 [pilot-run design](superpowers/specs/2026-10-02-pilot-run.md).
+The frozen taxonomy, single-label lexical assignment and the topic audit exist
+for synthetic text; see the
+[topic-taxonomy design](superpowers/specs/2026-10-02-topic-taxonomy.md).
 
 ## 0. The point-in-time rule, reconciled with historical retrieval
 
