@@ -26,7 +26,7 @@ The quota ledger and the scenario track follow separately.
 | YAML registration files | TOML | The runtime uses the standard library only; existing configuration is TOML |
 | SHA-256 of both files | SHA-256 of the canonical validated content of each file | Line-ending conversion on checkout must not break a committed lock, while every definitional change still does |
 | Local calendar day | Calendar day at a registered fixed UTC offset | No time-zone database is required; daylight-saving changes are not modelled |
-| Measured addendum computed by registered rules | Supplied synthetic values for `c_min`, `k_floor` and `H` | Rule-based computation and the pre-origin refusal need retrieved history |
+| Measured addendum computed by registered rules | Computed by proposed synthetic rules; λ and the MDE are not computed | The rules in §A.3 are named but not specified; λ needs live polling and the MDE a walk-forward simulation |
 | Topic series from lexical assignment, raw and cleaned | One supplied raw series per topic | Topic assignment and integrity screens are later modules |
 | Replay-visible rows | Strict observation-time visibility only | Replay needs complete recorded visibility histories |
 
@@ -52,6 +52,33 @@ and inconsistent floors are rejected.
 The lock records both content digests and is created with exclusive creation.
 Loading a locked registration recomputes both digests and refuses any mismatch.
 Every count report is stamped with both digests.
+
+## Measured addendum
+
+`measure` reads only rows published in [*D*0, *O*1) and visible at *O*1, through the
+shared visibility cursor, and refuses a series that does not reach *O*1. In the
+registered order:
+
+1. **Thresholds.** Every topic-hour of the pre-origin span, zero hours included,
+   forms one pooled distribution with median *M* and median absolute deviation
+   MAD; σ = 1.4826 × MAD. With *T* the trailing window,
+   `c_min` = max(minimum, ⌈*T*·*M* + *z*_c·√*T*·σ⌉) and
+   `k_floor` = max(minimum, ⌈*z*_k·√*T*·σ⌉): the typical trailing count plus a noise
+   margin, and a size floor above trailing-window noise.
+2. **Episodes.** The primary *m* and κ with these thresholds and the largest
+   registered horizon, so that the maximum duration does not cut decay short.
+3. **Half-life and horizon.** For each episode, hours from the last peak of the
+   hourly excess rate to the first hour at or below half of it; episodes without an
+   observed decay are excluded. *H* is the smallest registered horizon at least the
+   registered multiple of the median half-life, otherwise the largest. With fewer
+   than the registered minimum of half-lives, *H* is the largest horizon.
+
+The addendum records the pre-origin digest, *M*, MAD and the half-life count and
+median beside the thresholds. `count` recomputes the addendum from the counted
+series and refuses any difference, so neither a different pre-origin span nor a
+hand-edited value can be counted, even after relocking. These rules are a proposal
+for synthetic development; the confirmatory v1 rules require operator approval
+before they are locked. The workflow is `measure`, then `lock`, then `count`.
 
 ## Episodes
 
@@ -106,7 +133,13 @@ counts distinct test folds, ⌊(τ_k − *O*1) / fold⌋, that contain a positiv
 | Only test-fold episodes enter the selection | `backtest/test_positives.py::test_positives_counted_only_in_test_folds` |
 | Weeks are registered folds, not calendar weeks | `::test_week_floor_uses_registered_folds` |
 | A series must start at *D*0 | `::test_count_refuses_series_not_starting_at_history_start` |
+| Thresholds follow the registered rule | `backtest/test_measurement.py::test_c_min_and_k_floor_follow_registered_rule` |
+| A known decay is recovered and mapped to *H* | `::test_half_life_recovered_on_synthetic_decay` |
+| Half-life and horizon boundaries | `::test_half_life_counts_from_last_peak_to_half_inclusive`, `::test_horizon_is_smallest_registered_value_covering_the_multiple` |
+| Rows after *O*1 cannot change the addendum | `::test_addendum_invariant_to_rows_after_first_origin` |
+| No addendum before the pre-origin span is complete | `::test_addendum_refused_until_preorigin_span_complete` |
+| Counting refuses an addendum that does not reproduce | `::test_count_refuses_when_preorigin_data_differs_from_measurement` |
+| The shipped addendum reproduces byte for byte | `::test_shipped_measured_addendum_reproduces`, `::test_measure_lock_count_workflow` |
 
 Outside this increment: collectors, the quota ledger, topic assignment, integrity
-screens, half-life and horizon computation, survival, walk-forward evaluation and
-any accuracy figure.
+screens, λ, the MDE, survival, walk-forward evaluation and any accuracy figure.

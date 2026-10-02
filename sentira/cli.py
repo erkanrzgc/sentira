@@ -7,8 +7,9 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
+from sentira.backtest.measurement import measure, render_measured
 from sentira.backtest.positives import count_series, render_count, select_cell
-from sentira.backtest.registration import load_locked
+from sentira.backtest.registration import load_locked, load_registration, write_lock
 from sentira.config.briefing import load_config
 from sentira.config.cases import load_cases
 from sentira.core.document import utc
@@ -54,7 +55,17 @@ def main(argv=None):
     for option in ("registration", "measured", "lock", "series", "output"):
         counting.add_argument(f"--{option}", required=True)
     counting.add_argument("--overwrite", action="store_true")
+    measuring = commands.add_parser("measure", help="Compute the measured addendum once")
+    for option in ("registration", "series", "output"):
+        measuring.add_argument(f"--{option}", required=True)
+    locking = commands.add_parser("lock", help="Lock a registration and measured addendum")
+    for option in ("registration", "measured", "output"):
+        locking.add_argument(f"--{option}", required=True)
     args = parser.parse_args(argv)
+    if args.command == "measure":
+        return measure_addendum(args)
+    if args.command == "lock":
+        return lock_registration(args)
     if args.command == "case-report":
         return case_report(args)
     if args.command == "count":
@@ -110,6 +121,43 @@ def case_report(args):
         )
         return 1
     print("Synthetic case report written.")
+    return 0
+
+
+def refused(action):
+    print(
+        f"{action} refused: check the registration, series and output destination. "
+        "Existing measured addenda and locks are never replaced.",
+        file=sys.stderr,
+    )
+    return 1
+
+
+def measure_addendum(args):
+    try:
+        registration, source = Path(args.registration).resolve(), Path(args.series).resolve()
+        output = Path(args.output).resolve()
+        if output in (registration, source) or output.suffix != ".toml":
+            raise ValueError("Output must be a separate TOML file")
+        content = render_measured(measure(load_series(source), load_registration(registration)))
+        # Exclusive creation: an addendum is computed once and then locked.
+        write_report(output, content, overwrite=False)
+    except (ValueError, OSError, ArithmeticError):
+        return refused("Measurement")
+    print("Synthetic measured addendum written.")
+    return 0
+
+
+def lock_registration(args):
+    try:
+        registration, measured = Path(args.registration).resolve(), Path(args.measured).resolve()
+        output = Path(args.output).resolve()
+        if output in (registration, measured):
+            raise ValueError("Output must be a separate lock file")
+        write_lock(registration, measured, output)
+    except (ValueError, OSError):
+        return refused("Lock")
+    print("Synthetic registration lock written.")
     return 0
 
 

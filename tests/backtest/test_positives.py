@@ -1,5 +1,6 @@
 """Per-cell surge counts and the registered selection rule; synthetic input only."""
 
+import re
 import shutil
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -18,14 +19,9 @@ HOUR = timedelta(hours=1)
 
 
 @pytest.fixture(scope="module")
-def locked():
-    from sentira.backtest.registration import load_locked
-
-    return load_locked(
-        EXAMPLES / "synthetic-registration.toml",
-        EXAMPLES / "synthetic-measured.toml",
-        EXAMPLES / "synthetic-registration.lock",
-    )
+def locked(hand_locked):
+    # Hand-chosen thresholds (tests/fixtures/hand-measured.toml): c_min 6, k_floor 10, H 72 h.
+    return hand_locked
 
 
 def rows(first, hours, per_hour, *, visible_at=None):
@@ -161,7 +157,9 @@ def test_count_refuses_on_registration_hash_mismatch(tmp_path, capsys):
     assert "refractory" not in capsys.readouterr().err
 
     registration.write_text(text, encoding="utf-8")
-    measured.write_text(measured.read_text().replace("c_min = 6", "c_min = 5"))
+    measured.write_text(
+        re.sub(r"c_min = (\d+)", lambda m: f"c_min = {int(m[1]) + 1}", measured.read_text())
+    )
     assert main(arguments(registration, measured, lock, output)) == 1
     assert not output.exists()
 

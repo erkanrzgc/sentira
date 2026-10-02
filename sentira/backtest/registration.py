@@ -12,7 +12,7 @@ from datetime import datetime, time, timedelta
 from itertools import product
 from pathlib import Path
 
-from sentira.core.document import utc
+from sentira.core.document import utc, valid_hash
 from sentira.core.registration import digest, exact, sequence, slug
 
 
@@ -28,6 +28,12 @@ def multiplier(value):
     return float(value)
 
 
+def nonnegative(value):
+    if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+        raise ValueError("A non-negative finite number is required")
+    return float(value)
+
+
 def grid(values, item):
     result = sequence(values, item)
     if not result:
@@ -40,6 +46,34 @@ class Cell:
     onset_multiplier: float
     size_multiplier: float
     horizon_hours: int
+
+
+@dataclass(frozen=True, slots=True)
+class MeasurementRules:
+    """Registered label-free rules that compute the measured addendum (A.3, A.9)."""
+
+    c_min_z: float
+    k_floor_z: float
+    minimum_c_min: int
+    minimum_k_floor: int
+    minimum_half_life_episodes: int
+    horizon_multiple: float
+
+    @classmethod
+    def from_mapping(cls, raw):
+        keys = (
+            "c_min_z k_floor_z minimum_c_min minimum_k_floor "
+            "minimum_half_life_episodes horizon_multiple"
+        ).split()
+        exact(raw, keys)
+        return cls(
+            c_min_z=multiplier(raw["c_min_z"]),
+            k_floor_z=multiplier(raw["k_floor_z"]),
+            minimum_c_min=integer(raw["minimum_c_min"], 1, 10**6),
+            minimum_k_floor=integer(raw["minimum_k_floor"], 1, 10**6),
+            minimum_half_life_episodes=integer(raw["minimum_half_life_episodes"], 1, 10**4),
+            horizon_multiple=multiplier(raw["horizon_multiple"]),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,13 +93,14 @@ class SurgeDefinition:
     k_min: int
     reporting_floor: int
     week_floor: int
+    measurement: MeasurementRules
 
     @classmethod
     def from_mapping(cls, raw):
         keys = (
             "baseline_days trailing_hours refractory_hours end_quiet_hours "
             "max_duration_horizons onset_multipliers size_multipliers horizons_hours "
-            "primary fallback floors"
+            "primary fallback floors measurement"
         ).split()
         exact(raw, keys)
         primary = exact(raw["primary"], ("onset_multiplier", "size_multiplier"))
@@ -89,6 +124,7 @@ class SurgeDefinition:
             k_min=integer(floors["k_min"], 1, 10**6),
             reporting_floor=integer(floors["reporting_floor"], 1, 10**6),
             week_floor=integer(floors["week_floor"], 1, 10**4),
+            measurement=MeasurementRules.from_mapping(raw["measurement"]),
         )
         if result.reporting_floor > result.k_min:
             raise ValueError("The reporting floor cannot exceed K_min")
@@ -165,24 +201,45 @@ class Registration:
 
 @dataclass(frozen=True, slots=True)
 class Measured:
+    """The measured addendum: thresholds, horizon and the provenance they came from."""
+
     mode: str
     version: str
     registration_version: str
+    preorigin_sha256: str
+    hourly_median: float
+    hourly_mad: float
     c_min: int
     k_floor: int
+    half_life_episodes: int
+    half_life_hours: float | None
     horizon_hours: int
 
     @classmethod
     def from_mapping(cls, raw):
-        exact(raw, ("mode", "version", "registration_version", "c_min", "k_floor", "horizon_hours"))
+        keys = (
+            "mode version registration_version preorigin_sha256 hourly_median hourly_mad "
+            "c_min k_floor half_life_episodes horizon_hours"
+        ).split()
+        exact(raw, keys, ("half_life_hours",))
         if raw["mode"] != "synthetic":
             raise ValueError("Only synthetic measured addenda are supported")
+        if not valid_hash(raw["preorigin_sha256"]):
+            raise ValueError("A pre-origin SHA-256 digest is required")
+        half_life = raw.get("half_life_hours")
+        if half_life is not None and not nonnegative(half_life):
+            raise ValueError("A measured half-life must be positive")
         return cls(
             mode=raw["mode"],
             version=slug(raw["version"]),
             registration_version=slug(raw["registration_version"]),
+            preorigin_sha256=raw["preorigin_sha256"],
+            hourly_median=nonnegative(raw["hourly_median"]),
+            hourly_mad=nonnegative(raw["hourly_mad"]),
             c_min=integer(raw["c_min"], 1, 10**6),
             k_floor=integer(raw["k_floor"], 1, 10**6),
+            half_life_episodes=integer(raw["half_life_episodes"], 0, 10**6),
+            half_life_hours=None if half_life is None else float(half_life),
             horizon_hours=integer(raw["horizon_hours"], 1, 24 * 90),
         )
 

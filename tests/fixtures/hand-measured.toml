@@ -1,0 +1,13 @@
+# Hand-chosen thresholds for tests whose expected ticks are computed by hand.
+# This file is not produced by `measure`; its provenance values are placeholders.
+mode = "synthetic"
+version = "hand-measured-1"
+registration_version = "synthetic-surge-1"
+preorigin_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+hourly_median = 0.0
+hourly_mad = 0.0
+c_min = 6
+k_floor = 10
+half_life_episodes = 3
+half_life_hours = 20.0
+horizon_hours = 72

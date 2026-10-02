@@ -10,13 +10,14 @@ ROOT = Path(__file__).resolve().parents[2]
 REGISTRATION = ROOT / "examples/synthetic-registration.toml"
 MEASURED = ROOT / "examples/synthetic-measured.toml"
 LOCK = ROOT / "examples/synthetic-registration.lock"
+HAND_MEASURED = ROOT / "tests/fixtures/hand-measured.toml"
 
 
 def copies(tmp_path):
     registration = tmp_path / "registration.toml"
     measured = tmp_path / "measured.toml"
     shutil.copyfile(REGISTRATION, registration)
-    shutil.copyfile(MEASURED, measured)
+    shutil.copyfile(HAND_MEASURED, measured)
     return registration, measured, tmp_path / "registration.lock"
 
 
@@ -31,7 +32,8 @@ def test_shipped_synthetic_registration_validates():
 
     locked = load_locked(REGISTRATION, MEASURED, LOCK)
     assert locked.registration.mode == "synthetic"
-    assert locked.primary_cell == Cell(2.0, 1.0, 72)
+    assert locked.primary_cell == Cell(2.0, 1.0, locked.measured.horizon_hours)
+    assert locked.primary_cell in locked.grid
     assert len(locked.grid) == 3 * 4 * 3
     assert len(locked.registration_sha256) == len(locked.measured_sha256) == 64
 

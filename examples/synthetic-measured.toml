@@ -1,8 +1,13 @@
-# Supplied synthetic values. In Phase 1 these are computed by registered rules
-# from label-free pre-origin data before counting.
+# Computed by `python -m sentira.cli measure` from the pre-origin span.
+# Do not edit: counting recomputes these values and refuses any difference.
 mode = "synthetic"
-version = "synthetic-measured-1"
+version = "measured-072ec1209400"
 registration_version = "synthetic-surge-1"
-c_min = 6
-k_floor = 10
-horizon_hours = 72
+preorigin_sha256 = "072ec12094002c106d436a3e3d95e77dc20005a696c7a1605f8e786fd57fb18d"
+hourly_median = 1.0
+hourly_mad = 1.0
+c_min = 46
+k_floor = 15
+half_life_episodes = 4
+half_life_hours = 1.0
+horizon_hours = 24
