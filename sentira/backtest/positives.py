@@ -7,7 +7,7 @@ claim about real discourse.
 from dataclasses import dataclass
 
 from sentira.backtest.registration import Cell, LockedRegistration
-from sentira.series.episodes import detect_episodes
+from sentira.series.episodes import detect_grid
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,13 +30,8 @@ class Selection:
     reason: str
 
 
-def count_cell(series, locked, cell, *, start, end):
-    """Count one cell over topic series; eligible = detected + T1 classes + censored."""
-    found = [
-        episode
-        for rows in series.values()
-        for episode in detect_episodes(rows, locked, cell, start=start, end=end)
-    ]
+def summarise(cell, found):
+    """Count one cell's episodes; eligible = detected + T1 classes + censored."""
     eligible = [episode for episode in found if episode.tau_k is not None]
     population = [episode for episode in eligible if not episode.detected_at_crossing]
     positives = [episode for episode in population if episode.label == "positive"]
@@ -54,10 +49,18 @@ def count_cell(series, locked, cell, *, start, end):
     )
 
 
-def count_grid(series, locked, *, start, end):
-    return tuple(
-        count_cell(series, locked, cell, start=start, end=end) for cell in sorted(locked.grid)
-    )
+def count_grid(series, locked, *, start, end, cells=None):
+    """Count cells over topic series; each topic is replayed once for all cells."""
+    cells = tuple(sorted(locked.grid if cells is None else cells))
+    found = {cell: [] for cell in cells}
+    for rows in series.values():
+        for cell, episodes in detect_grid(rows, locked, cells, start=start, end=end).items():
+            found[cell].extend(episodes)
+    return tuple(summarise(cell, found[cell]) for cell in cells)
+
+
+def count_cell(series, locked, cell, *, start, end):
+    return count_grid(series, locked, start=start, end=end, cells=(cell,))[0]
 
 
 def select_cell(counts, locked):
@@ -90,6 +93,13 @@ def select_cell(counts, locked):
     if chosen.positive_weeks < surge.week_floor:
         return Selection("not_backtestable", None, "the week floor of positive weeks is not met")
     return Selection(outcome, chosen.cell, "both classes reach K_min and the week floor is met")
+
+
+def share(count):
+    if not count.eligible:
+        return "0/0"
+    percent = 100 * count.k_floor_binds / count.eligible
+    return f"{count.k_floor_binds}/{count.eligible} ({percent:.1f}%)"
 
 
 def describe(cell):
@@ -135,7 +145,7 @@ def render_count(locked, series, counts, selection):
         "reached k; censored episodes resolve after the end of the series.",
         "",
         "| m | κ | H (h) | Episodes | Eligible | Positive | Negative | Censored "
-        "| Detected at crossing | k_floor binds | Weeks with a positive |",
+        "| Detected at crossing | k_floor binds (of eligible) | Weeks with a positive |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for count in counts:
@@ -143,7 +153,7 @@ def render_count(locked, series, counts, selection):
         lines.append(
             f"| {cell.onset_multiplier:g} | {cell.size_multiplier:g} | {cell.horizon_hours} "
             f"| {count.episodes} | {count.eligible} | {count.positive} | {count.negative} "
-            f"| {count.censored} | {count.detected_at_crossing} | {count.k_floor_binds} "
+            f"| {count.censored} | {count.detected_at_crossing} | {share(count)} "
             f"| {count.positive_weeks} |"
         )
     return "\n".join(lines) + "\n"

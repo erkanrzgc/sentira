@@ -50,20 +50,24 @@ Every count report is stamped with both digests.
 ## Episodes
 
 Input is a sequence of rows with a publication time and a visibility time, an
-evaluation span and one grid cell. At each hourly tick *t*, only rows visible by
-*t* are read. Definitions follow §A.2–A.3:
+evaluation span and the grid cells to evaluate. At each hourly tick *t*, only rows
+visible by *t* are read, through `VisibilityCursor` in `storage/asof.py`. The cursor
+applies the same predicate as `AsOfReader`, and an equivalence test keeps the two
+implementations aligned, so there is one visibility rule. One pass over the ticks
+serves every cell. Definitions follow §A.2–A.3:
 
 - **Baseline:** the median daily count over the registered number of whole calendar days before the current day, as visible at *t*.
-- **Onset:** the trailing count reaches *m* times the baseline and `c_min`, no episode is open, and the refractory period has passed. The baseline is frozen at onset as *b*\*.
+- **Onset:** the trailing count reaches *m* times the baseline and `c_min`, no episode is open, and the refractory period has passed. The daily baseline is scaled to the trailing window (*b* × trailing hours / 24) before it is compared with a trailing count. The baseline is frozen at onset as *b*\*.
 - **Size and threshold:** size is net excess over *b*\*. *k* = max(κ·*b*\*, `k_floor`). τ_k is the first tick with size ≥ *k*.
-- **At τ_k:** overshoot is size(τ_k)/*k*. An episode already at 2*k* is detected at crossing and excluded from the T1 population.
-- **Labels:** positive or negative is resolved at τ_k + *H* for both classes; a later resolution than the end of data is censored, not negative. An episode that never reaches *k* is recorded as below *k*.
+- **At τ_k:** overshoot is size(τ_k)/*k*. An episode already at 2*k* is labelled detected at crossing: its crossing time is τ_k, no later crossing is recorded, and it is excluded from the T1 population.
+- **Labels:** positive or negative is resolved at τ_k + *H* for both classes; a later resolution than the end of data is censored, not negative. An episode that ends without reaching *k* is below *k*; one still open at the end of data without reaching *k* is open, not below *k*.
+- **Interpretation:** an episode's size stops at its end, so a 2*k* crossing counts only while the episode is open. A renewed surge after the end is a new episode, subject to the refractory period.
 - **End:** the trailing count stays below the **current** baseline for the registered quiet period, or the maximum duration elapses.
 
 ## Count report
 
 Counts per cell: episodes, eligible (reached *k*), positive, negative, censored,
-detected at crossing, and the share where `k_floor` binds. The selected cell
+detected at crossing, and the share of eligible episodes where `k_floor` binds. The selected cell
 follows the registered rule. The primary cell is used when both classes reach
 *K*min; otherwise the fallback for the short class is used. With both classes
 short, the outcome is "not backtestable on current history". The week floor

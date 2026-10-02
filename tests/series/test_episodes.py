@@ -98,6 +98,9 @@ def test_detected_at_crossing_excluded_from_t1_population(locked):
     assert episode.tau_k == DAY + 13 * HOUR
     assert episode.overshoot == 2.0
     assert episode.detected_at_crossing
+    # No crossing after tau_k is invented; the outcome was already known at tau_k.
+    assert episode.label == "detected_at_crossing"
+    assert episode.crossed_2k_at == episode.tau_k == episode.resolves_at
     assert not episode.in_t1_population
 
 
@@ -184,6 +187,57 @@ def test_baseline_includes_late_rows_for_past_days(locked):
     observations += rows(DAY - timedelta(days=1), 24, 4, visible_at=DAY + 12 * HOUR)
     observations += rows(DAY, 24, 3)
     assert detect(locked, observations, end=DAY + timedelta(days=3)) == ()
+
+
+def test_open_episode_below_k_is_unresolved(locked):
+    # Onset at 03:00; the data end two hours later, before the episode can reach k.
+    (episode,) = detect(locked, rows(DAY, 3, 2), end=DAY + 5 * HOUR)
+    assert episode.tau_k is None and episode.end_reason == "open"
+    assert episode.label == "open"
+    (ended,) = detect(locked, rows(DAY, 3, 2), end=DAY + timedelta(days=10))
+    assert ended.label == "below_k" and ended.end_reason == "max_duration"
+
+
+def test_trailing_window_scales_daily_baseline(locked, tmp_path):
+    from sentira.backtest.registration import load_locked, write_lock
+
+    examples = ROOT / "examples"
+    registration = tmp_path / "registration.toml"
+    registration.write_text(
+        (examples / "synthetic-registration.toml")
+        .read_text(encoding="utf-8")
+        .replace("trailing_hours = 24", "trailing_hours = 12"),
+        encoding="utf-8",
+    )
+    lock = tmp_path / "registration.lock"
+    write_lock(registration, examples / "synthetic-measured.toml", lock)
+    twelve = load_locked(registration, examples / "synthetic-measured.toml", lock)
+    # b = 24 a day, so a 12-hour window expects 12 rows and m = 2 needs 24. At
+    # three rows an hour the 12-hour count is 12 + 2h, reaching 24 at 06:00.
+    observations = rows(START, 28 * 24, 1) + rows(DAY, 48, 3)
+    episodes = detect(twelve, observations, end=DAY + timedelta(days=5))
+    assert episodes[0].onset_at == DAY + 6 * HOUR
+    assert episodes[0].baseline == 24
+
+
+def test_grid_pass_matches_single_cell_detection(locked):
+    from sentira.series.episodes import Observation, detect_episodes, detect_grid
+
+    generator = random.Random(23)
+    observations = []
+    for hour in range(45 * 24):
+        burst = 5 if hour % (6 * 24) in range(10, 22) else 0
+        for _ in range(generator.randint(0, 2) + burst):
+            published = START + timedelta(hours=hour, minutes=generator.randint(0, 59))
+            delay = timedelta(minutes=generator.choice((0, 0, 30, 240)))
+            observations.append(Observation(published, published + delay))
+    end = START + timedelta(days=45)
+    together = detect_grid(observations, locked, locked.grid, start=START, end=end)
+    assert set(together) == set(locked.grid)
+    for cell in locked.grid:
+        alone = detect_episodes(observations, locked, cell, start=START, end=end)
+        assert together[cell] == alone
+    assert sum(len(found) for found in together.values()) > 36
 
 
 def test_detection_requires_locked_registration_grid_cell_and_hour_bounds(locked):

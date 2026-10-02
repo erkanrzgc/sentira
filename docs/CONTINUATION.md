@@ -912,3 +912,30 @@ primary cell it has 2 positives and 1 negative against a *K*min of 100 per class
 This is a property of a small fixture, not a feasibility finding. Measured: 445
 Python tests and 14 Node tests passed, 95% combined statement and branch coverage,
 Ruff lint and format passed for 100 files.
+
+## Review fixes for the surge-counting increment, 2026-10-02
+
+A high-effort review of `3c7ec2d..14e76a7` produced ten findings, two reproduced on
+the shipped fixtures. Eight are fixed here; counting outside test folds and the
+calendar of the week floor need registered origins and are the next step.
+
+| Named test | Verified contract |
+| --- | --- |
+| `tests/storage/test_asof.py::test_cursor_and_reader_agree_on_visibility` | The in-memory `VisibilityCursor` and `AsOfReader` admit the same 120 synthetic rows at every checkpoint, including exact observation times; the cursor refuses to move backwards |
+| `tests/series/test_episodes.py::test_detected_at_crossing_excluded_from_t1_population` | A lump at 2*k* is labelled detected at crossing with its crossing at τ_k; no later crossing is invented |
+| `::test_open_episode_below_k_is_unresolved` | An episode still open at the end of data without reaching *k* is open, not below *k* |
+| `::test_trailing_window_scales_daily_baseline` | A 12-hour window compares with half the daily baseline; the unscaled rule produced no onset |
+| `::test_grid_pass_matches_single_cell_detection` | One pass for 36 cells equals 36 single-cell runs on a seeded series |
+| `tests/backtest/test_cli.py::test_count_cli_refuses_oversized_or_unrepresentable_series_before_expanding` | Oversized series are refused before any row is built; unrepresentable times are refused, not raised |
+| `::test_series_segment_count_is_bounded` | Topics cannot carry more than the registered maximum of segments |
+| `::test_count_cli_renders_stamped_report` (extended) | The `k_floor` column shows binds over eligible with a share |
+
+The episode detector now reads through `VisibilityCursor`, so the strict
+visibility rule has one definition outside SQL and an equivalence test against
+the reader. Measured: all new or changed tests failed before their fixes; five
+deliberate mutations (a strict `<` in the cursor, an invented crossing, an
+unscaled trailing window, open episodes as below *k*, and no size check before
+expansion) each fail at least one test. The single-pass detector produced the same
+counts in all 36 rows of the example report as before, and one example run fell
+from 0.68 to 0.20 seconds (single run each). 452 Python tests and 14 Node tests
+passed; 95% combined coverage; Ruff passed.

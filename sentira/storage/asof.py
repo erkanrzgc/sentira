@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from sentira.core.document import Document, DocumentKind, Provenance
+from sentira.core.document import Document, DocumentKind, Provenance, utc
 from sentira.storage.repository import Metric, Repository, StorageError, timestamp
 
 
@@ -44,6 +44,34 @@ class VisibleSnapshot:
 class AsOfResult:
     documents: tuple[VisibleDocument, ...]
     snapshots: tuple[VisibleSnapshot, ...]
+
+
+class VisibilityCursor:
+    """The strict observation-time rule for in-memory row streams.
+
+    A row is visible at T exactly when it was observed at or before T, the same
+    predicate AsOfReader applies in SQL; an equivalence test keeps them aligned.
+    """
+
+    def __init__(self, rows, *, observed_at):
+        self._observed_at = observed_at
+        self._rows = sorted(rows, key=lambda row: utc(observed_at(row)))
+        self._cursor = 0
+        self._last = None
+
+    def advance(self, at: datetime):
+        """Return the rows that became visible after the previous call, up to `at`."""
+        limit = utc(at)
+        if self._last is not None and limit < self._last:
+            raise ValueError("Visibility time cannot move backwards")
+        self._last = limit
+        first = self._cursor
+        while (
+            self._cursor < len(self._rows)
+            and utc(self._observed_at(self._rows[self._cursor])) <= limit
+        ):
+            self._cursor += 1
+        return self._rows[first : self._cursor]
 
 
 class AsOfReader:
