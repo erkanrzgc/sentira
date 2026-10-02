@@ -1336,3 +1336,41 @@ repository and checked word for word against the SPDX copy (the only difference 
 metadata (`License-Expression: AGPL-3.0-only`, setuptools 77 or later) now state
 it. The licence grants no rights to third-party data or platform content. No code
 changed.
+
+## Topic taxonomy, lexical assignment and the topic audit, 2026-10-02
+
+Step 4 of the plan. The operator decided that Claude drafts the topics and the
+operator approves them, that the topic with the most distinct matching keywords
+wins with ties going to the topic registered first, and that one annotator labels
+the audit set and re-labels 100 items blind after at least a week. The eleven
+drafted standing topics were approved, economy among them. `config/taxonomy.py`
+validates the frozen taxonomy, `nlp/topics.py` assigns as-of comment text and
+`eval/topic_audit.py` draws and scores the audit. Keywords in the repository are
+invented. Design and open question:
+[topic-taxonomy design](superpowers/specs/2026-10-02-topic-taxonomy.md).
+
+| Named test | Verified contract |
+| --- | --- |
+| `config/test_taxonomy.py::test_shipped_taxonomy_validates_in_registered_order` | Eleven topics in registered order; the case map folds before lower-casing |
+| `::test_invalid_taxonomies_are_refused`, `::test_direct_construction_is_validated` | A shared keyword, a three-letter stem, upper case, digits, spaces, an empty list, a repeated topic or keyword, a counter field, a malformed or duplicated case map, a non-text keyword, live mode and fewer than two topics are refused |
+| `nlp/test_topics.py::test_single_label_priority_rule_deterministic` | More distinct keywords win, a repeated keyword counts once, ties go to the earlier topic, word order does not matter |
+| `::test_case_map_and_prefix_matching` | The case map applies; a stem matches word starts only; a whole word matches only itself |
+| `::test_uses_frozen_taxonomy_hash` | Assignments carry the digest; a changed taxonomy is refused |
+| `::test_assignment_reads_only_as_of_text` | A comment edited after T is assigned at no topic at T and is assigned once visible |
+| `::test_video_title_not_used_for_assignment` | A publication's text is never assigned |
+| `eval/test_topic_audit.py::test_sample_is_seeded_and_stratified` | The same seed draws the same items; another seed draws other documents; four per stratum, or all when fewer |
+| `::test_audit_items_carry_no_timestamp_or_episode_id` | Items hold an opaque identifier and text only and are shuffled across strata |
+| `::test_development_audit_samples_pre_origin_span_only` | Development draws before the first origin, confirmatory after it |
+| `::test_wilson_interval_known_values`, `::test_cohen_kappa_known_values` | 8/10 gives (0.4902, 0.9433); 0/10 and 10/10 are bounded; kappa is 0.5 on a worked example and undefined when chance agreement is certain |
+| `::test_audit_metrics_and_recall_floor` | Precision and recall counts follow the annotations; incomplete annotation is refused |
+
+Measured: the tests failed at collection before the modules existed. Fourteen
+deliberate mutations each fail at least one test: order beating keyword count,
+ties going to the later topic, publications assigned, the digest unchecked, stems
+matching inside words, the case map ignored, shared keywords and short stems
+allowed, the seed ignored, no shuffle, the span filter dropped, a wrong Wilson
+centre, incomplete annotations accepted and kappa without chance correction. The
+seed mutation first survived because the order still changed; the test now
+compares the documents selected.
+636 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.

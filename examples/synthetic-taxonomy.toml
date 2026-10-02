@@ -1,0 +1,53 @@
+# Fictional taxonomy for development. The topic identifiers and their order are
+# the registered standing topics, and the order is the tie-break of the priority
+# rule. The keywords are invented words in no language. A keyword is a whole word
+# or a stem of at least four letters ending in "*". The case map registers how
+# letters fold before lower-casing; this one is invented too.
+mode = "synthetic"
+version = "synthetic-taxonomy-1"
+frozen_at = 2029-11-15T00:00:00Z
+case_map = [["K", "q"]]
+
+[[topics]]
+id = "economy"
+keywords = ["valtor*", "prensek", "dumari*"]
+
+[[topics]]
+id = "health"
+keywords = ["sentavo", "kirumel*"]
+
+[[topics]]
+id = "education"
+keywords = ["lopadin", "skevar*"]
+
+[[topics]]
+id = "justice"
+keywords = ["norrath*", "tulema"]
+
+[[topics]]
+id = "security"
+keywords = ["brakvet", "osmira*"]
+
+[[topics]]
+id = "foreign-policy"
+keywords = ["zelvana", "durrik*"]
+
+[[topics]]
+id = "environment-and-disasters"
+keywords = ["fennoth", "graviel*"]
+
+[[topics]]
+id = "local-services"
+keywords = ["hambrel", "qastor*"]
+
+[[topics]]
+id = "energy"
+keywords = ["voltrane", "pekkar*"]
+
+[[topics]]
+id = "social-security"
+keywords = ["anselm", "rovinta*"]
+
+[[topics]]
+id = "elections"
+keywords = ["mardeck", "suvalle*"]

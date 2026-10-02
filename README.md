@@ -159,8 +159,8 @@ Implemented in the offline foundation:
 sentira/
   core/         Document envelope, HMAC identity boundary, synthetic evidence,
                 procedural case records and registration helpers
-  config/       target, briefing, case, quota, collection-policy, volume and
-                channel-frame configuration, schema-validated
+  config/       target, briefing, case, quota, collection-policy, volume,
+                channel-frame and taxonomy configuration, schema-validated
   storage/      document schema, observation snapshots, strict as-of reads,
                 the synthetic evidence ledger and the quota ledger
   collectors/   metered client (every call debited before it is made), the
@@ -169,6 +169,9 @@ sentira/
                 run (synthetic only; no source adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
+  nlp/          single-label lexical topic assignment on as-of comment text
+  eval/         seeded, blind, stratified topic audit; Wilson intervals and
+                intra-annotator agreement
   backtest/     locked surge registration, per-cell positive counts and the
                 locked pilot registration
   cli.py        briefing, case-report, measure, lock, count, cost and
@@ -180,12 +183,12 @@ Planned, not yet implemented:
 ```
 sentira/
   collectors/   per-source adapters behind the metered client
-  nlp/          normalisation, relevance, integrity screening, sentiment,
-                target-based stance, aspect extraction
+  nlp/          normalisation beyond case folding, relevance, integrity
+                screening, sentiment, target-based stance, aspect extraction
   series/       series construction from collected rows and multi-source fusion
   forecast/     conditional growth estimation
   backtest/     walk-forward evaluation, leakage and survivorship checks
-  eval/         annotation tooling and metrics reported against baselines
+  eval/         annotation tooling and model metrics reported against baselines
 ```
 
 The local experiments under `experiments/` sit outside the package and are not
@@ -382,6 +385,17 @@ A locked pilot can be run end to end against a deterministic synthetic provider
 schedule of policy P, retrieval of the history span within its reservation, and a
 clean stop at the pilot ceiling, with every call debited first. Its figures are
 simulated and test the machinery only. See the [pilot-run design](docs/superpowers/specs/2026-10-02-pilot-run.md).
+
+## Topics and the topic audit
+
+Comments are assigned to one of eleven standing topics, economy among them, by a
+frozen lexical taxonomy (`examples/synthetic-taxonomy.toml`, invented keywords):
+the topic with the most distinct matching keywords wins, ties going to the topic
+registered first. Only comments visible in an as-of read are assigned, never a
+video title, and each assignment carries the taxonomy digest. The topic audit
+draws a seeded, blind, stratified sample and reports precision and recall with
+Wilson intervals, and intra-annotator agreement as Cohen's kappa. See the
+[topic-taxonomy design](docs/superpowers/specs/2026-10-02-topic-taxonomy.md).
 
 ## Generate a synthetic briefing
 
