@@ -40,7 +40,8 @@ def test_count_cli_renders_stamped_report(tmp_path):
     assert text.startswith("# SYNTHETIC surge count report")
     assert locked.registration_sha256 in text and locked.measured_sha256 in text
     assert "not backtestable on current history" in text
-    assert text.count("\n| ") == 1 + len(locked.grid)
+    # Header and one row per grid cell, for the test span and the pre-origin span.
+    assert text.count("\n| ") == 2 * (1 + len(locked.grid))
     assert "probability" not in text.lower() and "accuracy:" not in text.lower()
     assert "k_floor binds (of eligible)" in text
     assert re.search(r"\| \d+/\d+ \(\d+\.\d%\) \|", text)

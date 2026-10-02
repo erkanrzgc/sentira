@@ -11,7 +11,9 @@ from sentira.cli import main
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLES = ROOT / "examples"
 START = datetime(2030, 1, 1, tzinfo=UTC)
-DAY = START + timedelta(days=28)
+ORIGIN = START + timedelta(days=118)
+# Scenarios sit in the test span; zero backgrounds keep them hand-checkable.
+DAY = ORIGIN + timedelta(days=1)
 HOUR = timedelta(hours=1)
 
 
@@ -53,7 +55,7 @@ def count(cell, **values):
 
 
 def test_counts_match_hand_labelled_fixture(locked):
-    from sentira.backtest.positives import count_cell
+    from sentira.backtest.positives import count_grid
 
     # Zero baselines make each label hand-checkable: k = k_floor = 10 and
     # H = 72 h in the primary cell (see tests/series/test_episodes.py).
@@ -65,7 +67,9 @@ def test_counts_match_hand_labelled_fixture(locked):
         "censored": rows(end - timedelta(days=2), 20, 2),
         "quiet": rows(DAY, 2, 2),
     }
-    result = count_cell(series, locked, locked.primary_cell, start=START, end=end)
+    counts = count_grid(series, locked, start=START, end=end, cells=(locked.primary_cell,))
+    result = counts.test[0]
+    assert counts.pre_origin[0].episodes == 0
     assert result.cell == locked.primary_cell
     assert (result.episodes, result.eligible) == (4, 4)
     assert (result.positive, result.negative, result.censored) == (1, 1, 1)
@@ -159,4 +163,81 @@ def test_count_refuses_on_registration_hash_mismatch(tmp_path, capsys):
     registration.write_text(text, encoding="utf-8")
     measured.write_text(measured.read_text().replace("c_min = 6", "c_min = 5"))
     assert main(arguments(registration, measured, lock, output)) == 1
+    assert not output.exists()
+
+
+def episode(tau_k, label="positive"):
+    from sentira.series.episodes import Episode
+
+    return Episode(
+        onset_at=tau_k - 5 * HOUR,
+        baseline=0.0,
+        k=10.0,
+        k_floor_binds=True,
+        tau_k=tau_k,
+        overshoot=1.0,
+        detected_at_crossing=False,
+        crossed_2k_at=tau_k + 5 * HOUR if label == "positive" else None,
+        resolves_at=tau_k + 72 * HOUR,
+        label=label,
+        ended_at=tau_k + 100 * HOUR,
+        end_reason="quiet",
+    )
+
+
+def test_week_floor_uses_registered_folds(locked):
+    from sentira.backtest.positives import summarise
+
+    # A Tuesday origin: Sunday and Monday share a fold but not an ISO week.
+    origin = datetime(2030, 4, 30, tzinfo=UTC)
+    sunday, monday = origin + timedelta(days=5, hours=12), origin + timedelta(days=6, hours=12)
+    assert sunday.isocalendar()[1] != monday.isocalendar()[1]
+    cell = locked.primary_cell
+    same_fold = summarise(cell, [episode(sunday), episode(monday)], origin=origin, fold_days=7)
+    assert same_fold.positive == 2 and same_fold.positive_weeks == 1
+    later = summarise(
+        cell,
+        [episode(sunday), episode(monday), episode(origin + timedelta(days=7))],
+        origin=origin,
+        fold_days=7,
+    )
+    assert later.positive_weeks == 2
+    at_origin = summarise(cell, [episode(origin)], origin=origin, fold_days=7)
+    assert at_origin.positive_weeks == 1
+    with pytest.raises(ValueError):
+        summarise(cell, [episode(origin - HOUR)], origin=origin, fold_days=7)
+
+
+def test_positives_counted_only_in_test_folds(locked):
+    from sentira.backtest.positives import count_grid
+
+    before = rows(ORIGIN - timedelta(days=10), 20, 2)
+    # Onset at ORIGIN - 1 h, tau_k at ORIGIN + 4 h: the episode belongs to the test span.
+    straddling = rows(ORIGIN - 4 * HOUR, 20, 2)
+    after = rows(ORIGIN + timedelta(days=5), 20, 2)
+    # Onset at ORIGIN - 5 h and tau_k exactly at ORIGIN: test fold 0.
+    boundary = rows(ORIGIN - 8 * HOUR, 20, 2)
+    series = {"before": before, "straddling": straddling, "after": after, "boundary": boundary}
+    end = ORIGIN + timedelta(days=12)
+    counts = count_grid(series, locked, start=START, end=end, cells=(locked.primary_cell,))
+    test, pre = counts.test[0], counts.pre_origin[0]
+    assert (pre.episodes, pre.positive, pre.positive_weeks) == (1, 1, 0)
+    assert (test.episodes, test.positive) == (3, 3)
+    assert test.positive_weeks == 1
+
+
+def test_count_refuses_series_not_starting_at_history_start(tmp_path):
+    series = tmp_path / "series.toml"
+    text = (EXAMPLES / "synthetic-series.toml").read_text(encoding="utf-8")
+    series.write_text(
+        text.replace("start = 2030-01-01T00:00:00Z", "start = 2030-01-02T00:00:00Z", 1),
+        encoding="utf-8",
+    )
+    output = tmp_path / "count.md"
+    registration, measured, lock = (
+        EXAMPLES / "synthetic-registration.toml",
+        EXAMPLES / "synthetic-measured.toml",
+        EXAMPLES / "synthetic-registration.lock",
+    )
+    assert main(arguments(registration, measured, lock, output, series)) == 1
     assert not output.exists()

@@ -5,6 +5,12 @@ version = "synthetic-surge-1"
 registered_at = 2030-01-01T00:00:00Z
 calendar_utc_offset_minutes = 0
 
+[walk_forward]
+history_start = 2030-01-01T00:00:00Z
+burn_in_days = 28
+training_days = 90
+fold_days = 7
+
 [surge]
 baseline_days = 28
 trailing_hours = 24

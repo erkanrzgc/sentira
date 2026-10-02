@@ -35,6 +35,12 @@ confirmatory registration v1, which is locked only after a pilot.
 
 ## Registration and lock
 
+The registration also fixes the walk-forward constants of §A.5: the history
+start *D*0 at a local midnight, a burn-in of at least the baseline window, a
+training span and the test fold length. The first origin *O*1 = *D*0 + burn-in +
+training is derived, never supplied; with the synthetic values it is *D*0 + 118
+days. A counted series must start at *D*0.
+
 The registration fixes the §A.3 definitions: baseline days, trailing window,
 refractory period, end rule, maximum duration in horizons, the grid of onset
 multipliers *m*, size multipliers κ and horizons *H*, the primary cell, the two
@@ -66,12 +72,15 @@ serves every cell. Definitions follow §A.2–A.3:
 
 ## Count report
 
-Counts per cell: episodes, eligible (reached *k*), positive, negative, censored,
-detected at crossing, and the share of eligible episodes where `k_floor` binds. The selected cell
+Counts per cell and span: episodes, eligible (reached *k*), positive, negative,
+censored, detected at crossing, and the share of eligible episodes where `k_floor`
+binds. An eligible episode belongs to the span and fold containing its τ_k; other
+episodes belong by onset. The pre-origin span [*D*0, *O*1) is never a test fold:
+its counts are reported separately and never enter *K*min or the week floor. The selected cell
 follows the registered rule. The primary cell is used when both classes reach
 *K*min; otherwise the fallback for the short class is used. With both classes
 short, the outcome is "not backtestable on current history". The week floor
-counts distinct ISO weeks containing a positive. Every figure is labelled
+counts distinct test folds, ⌊(τ_k − *O*1) / fold⌋, that contain a positive. Every figure is labelled
 *calculated*; the report is marked synthetic and carries no accuracy claim.
 
 ## Acceptance tests
@@ -93,6 +102,10 @@ counts distinct ISO weeks containing a positive. Every figure is labelled
 | Counts match a hand-labelled fixture | `::test_counts_match_hand_labelled_fixture` |
 | Fallback follows the registered rule | `::test_fallback_cell_chosen_by_registered_rule` |
 | The week floor is enforced | `::test_week_floor_enforced` |
+| *O*1 is derived from registered constants | `backtest/test_registration.py::test_first_origin_is_registered_constant` |
+| Only test-fold episodes enter the selection | `backtest/test_positives.py::test_positives_counted_only_in_test_folds` |
+| Weeks are registered folds, not calendar weeks | `::test_week_floor_uses_registered_folds` |
+| A series must start at *D*0 | `::test_count_refuses_series_not_starting_at_history_start` |
 
 Outside this increment: collectors, the quota ledger, topic assignment, integrity
 screens, half-life and horizon computation, survival, walk-forward evaluation and

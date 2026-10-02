@@ -7,7 +7,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from sentira.backtest.positives import count_grid, render_count, select_cell
+from sentira.backtest.positives import count_series, render_count, select_cell
 from sentira.backtest.registration import load_locked
 from sentira.config.briefing import load_config
 from sentira.config.cases import load_cases
@@ -125,8 +125,8 @@ def count(args):
         # The lock is verified before any series is read or counted.
         locked = load_locked(*inputs[:3])
         series = load_series(inputs[3])
-        counts = count_grid(series.topics, locked, start=series.start, end=series.end)
-        content = render_count(locked, series, counts, select_cell(counts, locked))
+        counts = count_series(series, locked)
+        content = render_count(locked, series, counts, select_cell(counts.test, locked))
         write_report(output, content, overwrite=args.overwrite)
     except (ValueError, OSError, ArithmeticError):
         print(

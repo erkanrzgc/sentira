@@ -293,9 +293,10 @@ that a real entity qualifies. See [current limits](docs/CONTINUATION.md).
 
 The command verifies the registration lock before reading the series and refuses
 any changed definition. It counts episodes, eligible, positive, negative, censored
-and detected-at-crossing episodes for every registered grid cell, applies the
-registered primary-and-fallback rule and stamps both registration digests into the
-report. The fictional example is far below *K*min and is reported as not
+and detected-at-crossing episodes for every registered grid cell, separately for
+the test span from the first origin and for the pre-origin span, which is never a
+test fold. It applies the registered primary-and-fallback rule to the test span
+only and stamps both registration digests into the report. The fictional example is far below *K*min and is reported as not
 backtestable. The measured addendum is supplied rather than computed, topic
 assignment and integrity screens are not implemented, and visibility is strict
 observation time only. See the [surge-counting design](docs/superpowers/specs/2026-10-02-surge-counting.md).
