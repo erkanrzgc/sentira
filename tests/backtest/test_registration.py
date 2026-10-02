@@ -138,3 +138,31 @@ def test_unreadable_or_foreign_lock_refused(tmp_path, content):
     lock.write_text(content, encoding="utf-8")
     with pytest.raises(ValueError):
         load_locked(registration, measured, lock)
+
+
+def test_first_origin_is_registered_constant(tmp_path):
+    from datetime import UTC, datetime, timedelta
+
+    from sentira.backtest.registration import load_locked, load_registration, write_lock
+
+    locked = load_locked(REGISTRATION, MEASURED, LOCK)
+    walk = locked.registration.walk_forward
+    assert walk.history_start == datetime(2030, 1, 1, tzinfo=UTC)
+    assert walk.first_origin == walk.history_start + timedelta(days=28 + 90)
+    assert walk.first_origin == datetime(2030, 4, 29, tzinfo=UTC)
+    assert walk.fold_days == 7
+
+    registration, measured, lock = copies(tmp_path)
+    write_lock(registration, measured, lock)
+    rewrite(registration, "training_days = 90", "training_days = 91")
+    with pytest.raises(ValueError, match="registration"):
+        load_locked(registration, measured, lock)
+    for old, new in (
+        ("history_start = 2030-01-01T00:00:00Z", "history_start = 2030-01-01T05:00:00Z"),
+        ("burn_in_days = 28", "burn_in_days = 27"),
+        ("fold_days = 7", "fold_days = 0"),
+    ):
+        registration.write_bytes(REGISTRATION.read_bytes())
+        rewrite(registration, old, new)
+        with pytest.raises(ValueError):
+            load_registration(registration)

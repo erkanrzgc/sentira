@@ -8,7 +8,7 @@ import json
 import math
 import tomllib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from itertools import product
 from pathlib import Path
 
@@ -105,28 +105,62 @@ class SurgeDefinition:
 
 
 @dataclass(frozen=True, slots=True)
+class WalkForward:
+    """Registered constants of BACKTEST A.5: history start D0 and first origin O1."""
+
+    history_start: datetime
+    burn_in_days: int
+    training_days: int
+    fold_days: int
+
+    @classmethod
+    def from_mapping(cls, raw):
+        exact(raw, ("history_start", "burn_in_days", "training_days", "fold_days"))
+        return cls(
+            history_start=utc(raw["history_start"]),
+            burn_in_days=integer(raw["burn_in_days"], 1, 366),
+            training_days=integer(raw["training_days"], 1, 3660),
+            fold_days=integer(raw["fold_days"], 1, 366),
+        )
+
+    @property
+    def first_origin(self):
+        # The pre-origin span [D0, O1) is never a test fold.
+        return self.history_start + timedelta(days=self.burn_in_days + self.training_days)
+
+
+@dataclass(frozen=True, slots=True)
 class Registration:
     mode: str
     version: str
     registered_at: datetime
     calendar_utc_offset_minutes: int
     surge: SurgeDefinition
+    walk_forward: WalkForward
 
     @classmethod
     def from_mapping(cls, raw):
-        exact(raw, ("mode", "version", "registered_at", "calendar_utc_offset_minutes", "surge"))
+        keys = "mode version registered_at calendar_utc_offset_minutes surge walk_forward".split()
+        exact(raw, keys)
         if raw["mode"] != "synthetic":
             raise ValueError("Only synthetic registrations are supported")
         offset = integer(raw["calendar_utc_offset_minutes"], -840, 840)
         if offset % 15:
             raise ValueError("The calendar offset must be a multiple of 15 minutes")
-        return cls(
+        result = cls(
             mode=raw["mode"],
             version=slug(raw["version"]),
             registered_at=utc(raw["registered_at"]),
             calendar_utc_offset_minutes=offset,
             surge=SurgeDefinition.from_mapping(raw["surge"]),
+            walk_forward=WalkForward.from_mapping(raw["walk_forward"]),
         )
+        local_start = result.walk_forward.history_start + timedelta(minutes=offset)
+        if local_start.time() != time(0):
+            raise ValueError("The history start must fall on a local midnight")
+        if result.walk_forward.burn_in_days < result.surge.baseline_days:
+            raise ValueError("The burn-in must cover the baseline window")
+        return result
 
 
 @dataclass(frozen=True, slots=True)

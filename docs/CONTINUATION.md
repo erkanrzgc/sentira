@@ -939,3 +939,28 @@ expansion) each fail at least one test. The single-pass detector produced the sa
 counts in all 36 rows of the example report as before, and one example run fell
 from 0.68 to 0.20 seconds (single run each). 452 Python tests and 14 Node tests
 passed; 95% combined coverage; Ruff passed.
+
+## Registered origin and test-fold counting, 2026-10-02
+
+The registration now fixes the §A.5 walk-forward constants: history start *D*0
+at a local midnight, a 28-day burn-in covering the baseline window, a 90-day
+training span and 7-day folds. The first origin *O*1 = *D*0 + 118 days is derived.
+Counting refuses a series that does not start at *D*0, assigns each eligible
+episode to the span and fold of its τ_k, applies *K*min and the week floor to the
+test span only, and reports the pre-origin span separately as never a test fold.
+The example series now covers the pre-origin span and eight weekly test folds.
+
+| Named test | Verified contract |
+| --- | --- |
+| `tests/backtest/test_registration.py::test_first_origin_is_registered_constant` | *O*1 is *D*0 + 118 days; a changed constant breaks the lock; an unaligned start, a short burn-in and a zero fold are rejected |
+| `tests/backtest/test_positives.py::test_positives_counted_only_in_test_folds` | A pre-origin positive stays out of the test span; τ_k exactly at *O*1 and an onset before *O*1 with τ_k after it both count in the test span |
+| `::test_week_floor_uses_registered_folds` | Sunday and Monday positives share a fold that a calendar week would split; a pre-origin episode cannot be summarised as a test fold |
+| `::test_count_refuses_series_not_starting_at_history_start` | A series starting a day late writes no report |
+
+Measured: the new tests failed before the change; five deliberate mutations (an
+exclusive origin boundary in either direction, calendar weeks, no start check and
+partition by onset) each fail at least one test. The example report's primary cell
+has 3 positives and 3 negatives in the test span across 3 folds, and 2 positives
+and 4 negatives before *O*1: far below *K*min, so "not backtestable", a fixture
+property and not a feasibility finding. The measured addendum is still supplied;
+computing it by registered rules is the next step.

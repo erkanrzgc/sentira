@@ -5,6 +5,7 @@ claim about real discourse.
 """
 
 from dataclasses import dataclass
+from datetime import timedelta
 
 from sentira.backtest.registration import Cell, LockedRegistration
 from sentira.series.episodes import detect_grid
@@ -24,18 +25,40 @@ class CellCount:
 
 
 @dataclass(frozen=True, slots=True)
+class SpanCounts:
+    """Counts for the test span (from O1) and the pre-origin span [D0, O1)."""
+
+    test: tuple[CellCount, ...]
+    pre_origin: tuple[CellCount, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class Selection:
     outcome: str
     cell: Cell | None
     reason: str
 
 
-def summarise(cell, found):
-    """Count one cell's episodes; eligible = detected + T1 classes + censored."""
+def span_time(episode):
+    # An eligible episode belongs to the fold containing its tau_k (A.5).
+    return episode.tau_k if episode.tau_k is not None else episode.onset_at
+
+
+def summarise(cell, found, *, origin=None, fold_days=None):
+    """Count one cell's episodes; eligible = detected + T1 classes + censored.
+
+    With an origin, every episode must lie in the test span, and positive weeks
+    count the distinct registered folds that contain a positive tau_k.
+    """
     eligible = [episode for episode in found if episode.tau_k is not None]
     population = [episode for episode in eligible if not episode.detected_at_crossing]
     positives = [episode for episode in population if episode.label == "positive"]
-    weeks = {episode.tau_k.isocalendar()[:2] for episode in positives}
+    weeks = set()
+    if origin is not None:
+        if any(span_time(episode) < origin for episode in found):
+            raise ValueError("Pre-origin episodes are never in a test fold")
+        fold = timedelta(days=fold_days)
+        weeks = {(episode.tau_k - origin) // fold for episode in positives}
     return CellCount(
         cell=cell,
         episodes=len(found),
@@ -50,17 +73,28 @@ def summarise(cell, found):
 
 
 def count_grid(series, locked, *, start, end, cells=None):
-    """Count cells over topic series; each topic is replayed once for all cells."""
+    """Count cells over topic series by span; each topic is replayed once for all cells."""
+    walk = locked.registration.walk_forward
+    origin = walk.first_origin
     cells = tuple(sorted(locked.grid if cells is None else cells))
     found = {cell: [] for cell in cells}
     for rows in series.values():
         for cell, episodes in detect_grid(rows, locked, cells, start=start, end=end).items():
             found[cell].extend(episodes)
-    return tuple(summarise(cell, found[cell]) for cell in cells)
+    test, pre_origin = [], []
+    for cell in cells:
+        later = [episode for episode in found[cell] if span_time(episode) >= origin]
+        earlier = [episode for episode in found[cell] if span_time(episode) < origin]
+        test.append(summarise(cell, later, origin=origin, fold_days=walk.fold_days))
+        pre_origin.append(summarise(cell, earlier))
+    return SpanCounts(tuple(test), tuple(pre_origin))
 
 
-def count_cell(series, locked, cell, *, start, end):
-    return count_grid(series, locked, start=start, end=end, cells=(cell,))[0]
+def count_series(series, locked):
+    """Count a synthetic series that starts at the registered history start D0."""
+    if series.start != locked.registration.walk_forward.history_start:
+        raise ValueError("The series must start at the registered history start")
+    return count_grid(series.topics, locked, start=series.start, end=series.end)
 
 
 def select_cell(counts, locked):
@@ -108,8 +142,26 @@ def describe(cell):
     )
 
 
+def table(counts, *, weeks):
+    lines = [
+        "| m | κ | H (h) | Episodes | Eligible | Positive | Negative | Censored "
+        "| Detected at crossing | k_floor binds (of eligible) | Weeks with a positive |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    for count in counts:
+        cell = count.cell
+        lines.append(
+            f"| {cell.onset_multiplier:g} | {cell.size_multiplier:g} | {cell.horizon_hours} "
+            f"| {count.episodes} | {count.eligible} | {count.positive} | {count.negative} "
+            f"| {count.censored} | {count.detected_at_crossing} | {share(count)} "
+            f"| {count.positive_weeks if weeks else 'n/a'} |"
+        )
+    return lines
+
+
 def render_count(locked, series, counts, selection):
     registration, measured, surge = locked.registration, locked.measured, locked.registration.surge
+    walk = registration.walk_forward
     outcome = {
         "primary": "primary cell",
         "fallback_few_positives": "registered fallback for too few positives",
@@ -128,6 +180,8 @@ def render_count(locked, series, counts, selection):
         f"Span: {series.start.isoformat()} to {series.end.isoformat()}",
         f"Topics: {len(series.topics)}",
         f"Calendar offset: {registration.calendar_utc_offset_minutes} minutes from UTC",
+        f"History start D0: {walk.history_start.isoformat()}",
+        f"First origin O1: {walk.first_origin.isoformat()}; test folds of {walk.fold_days} days",
         "Visibility: strict observation time; no replay reconstruction.",
         "",
         "## Registered selection",
@@ -136,24 +190,20 @@ def render_count(locked, series, counts, selection):
         f"Reason: {selection.reason}.",
         f"Selected cell: {describe(selection.cell) if selection.cell else 'none'}.",
         f"Primary cell: {describe(locked.primary_cell)}.",
-        f"K_min: {surge.k_min} per class; week floor: {surge.week_floor} weeks with a positive.",
+        f"K_min: {surge.k_min} per class; "
+        f"week floor: {surge.week_floor} test folds with a positive.",
         f"Below {surge.reporting_floor} per class, counts only are reported.",
         "",
-        "## Counts per cell (calculated)",
-        "",
         "Positive and negative exclude episodes detected at crossing. Eligible episodes",
-        "reached k; censored episodes resolve after the end of the series.",
+        "reached k; censored episodes resolve after the end of the series. An eligible",
+        "episode belongs to the span and fold containing its tau_k.",
         "",
-        "| m | κ | H (h) | Episodes | Eligible | Positive | Negative | Censored "
-        "| Detected at crossing | k_floor binds (of eligible) | Weeks with a positive |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "## Test span from O1 (calculated)",
+        "",
+        *table(counts.test, weeks=True),
+        "",
+        "## Pre-origin span [D0, O1) (calculated; never a test fold)",
+        "",
+        *table(counts.pre_origin, weeks=False),
     ]
-    for count in counts:
-        cell = count.cell
-        lines.append(
-            f"| {cell.onset_multiplier:g} | {cell.size_multiplier:g} | {cell.horizon_hours} "
-            f"| {count.episodes} | {count.eligible} | {count.positive} | {count.negative} "
-            f"| {count.censored} | {count.detected_at_crossing} | {share(count)} "
-            f"| {count.positive_weeks} |"
-        )
     return "\n".join(lines) + "\n"
