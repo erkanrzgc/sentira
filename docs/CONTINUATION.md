@@ -1111,3 +1111,38 @@ dictionaries per debit, which is negligible beside a network call. The shared
 storage scaffolding across three ledgers is left for a separate refactor.
 After the fixes, 501 Python tests passed with 96% line and branch coverage; ruff
 check and format and the 14 Node tests passed.
+
+## Polling schedule and replay visibility, 2026-10-02
+
+First part of the pilot preparation in the plan approved on 2 October 2026.
+`config/collection.py` validates the collection policy *P* and
+`collectors/policy.py` computes discovery ticks, the poll jobs of one video and
+replay times. The example policy carries the proposed values of BACKTEST §0.3;
+none is measured. No API client or collection is added. Design, assumptions and
+deviations: [collection-policy design](superpowers/specs/2026-10-02-collection-policy.md).
+
+| Named test in `tests/collectors/test_policy.py` | Verified contract |
+| --- | --- |
+| `test_shipped_policy_validates`, `test_invalid_policies_are_refused` | The example validates; ten malformed policies are refused, including an interval that does not divide a day and non-increasing ages |
+| `test_discovery_follows_registered_ticks` | 02:30 is discovered at 06:00, a tick at itself, 23:59 at the next midnight |
+| `test_no_poll_before_discovery` | Discovery 3.5 h after publication polls the 1 h age at discovery and records it as missed |
+| `test_late_discovery_coalesces_missed_ages` | Discovery at 30 h gives one job for 1, 6 and 24 h, then single jobs for 72 h, 7 d and 30 d |
+| `test_future_ages_anchored_to_publication` | Later jobs fall at publication plus age, late or on time |
+| `test_restart_preserves_completed_jobs` | After age 1 h completes and a restart at 30 h, one job covers 6 and 24 h; age 1 h never returns |
+| `test_catch_up_after_last_age_is_live_only` | Discovery at 800 h gives one live-only job; discovery exactly at 720 h covers every age on time; replay uses the nominal schedule |
+| `test_row_beyond_page_cap_never_replay_visible` | With four threads per poll, the two oldest of six burst threads never become visible |
+| `test_row_after_last_poll_age_never_replay_visible` | A thread one minute after the 30-day poll is never visible; one at that instant is |
+| `test_tied_rows_at_page_cap_are_not_admitted` | A tie across the cap admits none of the tied threads |
+| `test_replay_inputs_are_validated` | A thread before its video, a negative latency, a naive time and an unvalidated policy are refused |
+| `test_replay_matches_live_visibility_on_synthetic_complete_history` | On five seeded videos of 200 threads, replay equals an independently written collector paging a synthetic provider |
+
+Measured: the tests failed at collection before the modules existed. Twelve
+deliberate mutations each fail at least one test: polling before discovery, no
+coalescing, later ages anchored to discovery, completed ages ignored, restart
+ignored, the catch-up not flagged, the page cap ignored, no stop at the last-seen
+thread, ties admitted, latency dropped, discovery one tick late and a strict due
+boundary that silently dropped an age due exactly at discovery. An interrupted
+mutation run once left the latency mutation in the working tree; it was found by
+the failing tests and restored before commit.
+527 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.

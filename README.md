@@ -159,12 +159,13 @@ Implemented in the offline foundation:
 sentira/
   core/         Document envelope, HMAC identity boundary, synthetic evidence,
                 procedural case records and registration helpers
-  config/       target, briefing, case and quota-policy configuration,
-                schema-validated
+  config/       target, briefing, case, quota and collection-policy
+                configuration, schema-validated
   storage/      document schema, observation snapshots, strict as-of reads,
                 the synthetic evidence ledger and the quota ledger
-  collectors/   metered client: every call debited before it is made
-                (synthetic transports only; no source adapter)
+  collectors/   metered client (every call debited before it is made), the
+                polling schedule and replay visibility under policy P
+                (synthetic only; no source adapter)
   report/       scenario briefing and case report rendering
   series/       surge episodes on strict as-of synthetic series
   backtest/     locked surge registration and per-cell positive counts
@@ -326,6 +327,17 @@ registered read-only endpoints; search is always refused. Retrieval cannot spend
 the live reservation. `drain` serves one purpose per run, so on exhaustion it
 stops that queue cleanly and hands back what it collected. Only synthetic
 transports exist; no API client or credential is implemented. See the [quota-ledger design](docs/superpowers/specs/2026-10-02-quota-ledger.md).
+
+## Polling schedule and replay
+
+`collectors/policy.py` applies the registered collection policy P
+(`examples/synthetic-policy.toml`): no poll before discovery, missed ages
+coalesced into one immediate poll, later ages anchored to publication, and
+completed ages kept across a restart. The same schedule gives the replay time of
+a retrieved thread, or none where the page cap or the last poll age would have
+hidden it. Replay is checked against an independent synthetic provider, not
+recorded responses, and is not yet wired into the as-of reader. See the
+[collection-policy design](docs/superpowers/specs/2026-10-02-collection-policy.md).
 
 ## Generate a synthetic briefing
 
