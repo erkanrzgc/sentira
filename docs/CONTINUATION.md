@@ -1282,10 +1282,12 @@ check it is the locked one. Design:
 
 | Named test in `tests/collectors/test_pilot_run.py` | Verified contract |
 | --- | --- |
-| `test_pilot_refuses_to_start_without_a_valid_lock` | No lock, another quota policy or a start after collection start is refused |
+| `test_pilot_refuses_to_start_without_a_valid_lock` | No lock, another quota policy, a ledger or provider on another clock, a provider from no lock, or a start after collection start is refused |
 | `test_no_call_precedes_the_lock_or_discovery` | Every debit is at or after collection start and the lock; every live poll follows its video's discovery tick |
-| `test_ledger_units_equal_pilot_calls` | Debits, provider calls and budget units agree, per purpose too |
-| `test_failed_calls_stay_spent_and_the_run_carries_on` | With every seventh call failing, failed debits equal the counted failures and all attempts are spent |
+| `test_ledger_units_equal_pilot_calls` | Debits, provider calls and budget units agree, per purpose too; a debit already in the ledger is not counted |
+| `test_failed_calls_stay_spent_and_the_run_carries_on` | With provider errors and timeouts, failed debits equal the counted failures and all attempts are spent; retrieval still completes all 210 history videos; no live poll precedes its video's actual discovery |
+| `test_provider_pages_through_the_snapshot_a_walk_began_on` | A walk's later page reads its starting snapshot; a fresh listing sees newer threads; a snapshot never passes the clock |
+| `test_retrieval_across_sessions_reads_each_page_once` | With 200 retrieval units a day, walks span sessions yet read each page once, and history threads equal those visible at each walk's snapshot |
 | `test_pilot_run_is_deterministic` | The same seed gives an identical report; another seed a different one |
 | `test_executed_cost_matches_projection_on_synthetic_volumes` | Discovery is exactly 3 × 4 × 7 calls; live and retrieval units stay within the projection |
 | `test_pilot_stops_cleanly_at_its_ceiling` | A world with ten times the assumed threads stops at the ceiling with ledger, budget and calls in agreement |
@@ -1303,4 +1305,20 @@ which the clock refuses as moving backwards, discovery walking history, failed
 calls not counted, polls run beyond the window and retrieval ignoring the span
 end). The failed-call mutation first survived; the failing-provider test was added.
 608 Python tests passed with 96% line and branch coverage; ruff check and format
+and the 14 Node tests passed.
+
+A high-effort review of the run raised nine points. Fixed: a failed retrieval page
+dropped the rest of its walk while the report still said complete, so failed pages
+are now retried after the rest of the queue; walks resumed the next day by page
+index could read threads twice, so each walk now pages through the snapshot it
+began on; the run did not check that ledger and provider read its clock, nor that
+the provider came from the same lock; earlier debits in the ledger were counted
+as the run's; the budget counted units on exceptions raised before any debit, and
+now counts exactly when a debit was written; timeouts and other network errors
+aborted the run; and the discovery-order test compared polls with the theoretical
+tick rather than the actual discovery, which a failing provider now exercises.
+Not changed: the defensive duplicate check on discovered videos. Fifteen mutations
+of the revised code each fail at least one test; the snapshot mutation first
+survived and a direct provider test was added for it.
+610 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.

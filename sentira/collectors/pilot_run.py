@@ -11,7 +11,7 @@ debited first. Every figure it reports is simulated, never measured.
 import heapq
 import random
 from bisect import bisect_right
-from collections import deque
+from collections import Counter, deque
 from dataclasses import dataclass, replace
 from datetime import timedelta
 from fractions import Fraction
@@ -60,10 +60,13 @@ class SyntheticProvider:
             raise ValueError("A verified pilot lock and volume assumptions are required")
         if len(volume.cumulative_share_by_age) != len(locked.policy.poll_ages_hours):
             raise ValueError("One cumulative share is required per poll age")
+        if type(clock) is not SimulationClock:
+            raise ValueError("A simulation clock is required")
         self._seed = integer(seed, 0, 2**63 - 1)
         self._clock = clock
         self._volume = volume
         self._policy = locked.policy
+        self._digests = locked.digests
         pilot = locked.pilot
         first = pilot.collection_start - (pilot.history_days + LEAD_DAYS) * DAY
         days = LEAD_DAYS + pilot.history_days + pilot.live_days
@@ -74,6 +77,24 @@ class SyntheticProvider:
             for channel in channels:
                 self._videos[channel] = self._generate_videos(channel, first, days)
         self._threads = {}
+
+    @property
+    def seed(self):
+        return self._seed
+
+    @property
+    def clock(self):
+        return self._clock
+
+    @property
+    def lock_digests(self):
+        return self._digests
+
+    def threads_visible(self, video, moment):
+        """How many of a video's threads were published by a moment."""
+        if video not in self._threads:
+            self._threads[video] = self._generate_threads(video)
+        return bisect_right(self._threads[video][0], utc(moment))
 
     def _generate_videos(self, channel, first, days):
         generator = random.Random(f"{self._seed}:{channel}")
@@ -129,8 +150,10 @@ class SyntheticProvider:
             raise ValueError("The synthetic provider serves only the registered list methods")
         now = self._clock()
         self.log.append((endpoint, dict(params), now))
+        # A walk that spans sessions pages through the snapshot it began on.
+        cutoff = min(utc(params["as_of"]), now) if "as_of" in params else now
         page = params["page"]
-        high = bisect_right(times, now) - page * size
+        high = bisect_right(times, cutoff) - page * size
         low = max(0, high - size)
         items = [rows[index] for index in range(high - 1, low - 1, -1)]
         return {"items": items, "next": page + 1 if low > 0 else None}
@@ -140,6 +163,10 @@ class ProviderError(Exception):
     """A provider call failed; its units stay spent and the run carries on."""
 
 
+# Failures of a call to the provider, as distinct from faults in this code.
+CALL_FAILURES = (ProviderError, OSError)
+
+
 class PilotCeilingReached(Exception):  # noqa: N818 - the name states the condition
     """The next call would take the pilot past its registered quota ceiling."""
 
@@ -147,24 +174,22 @@ class PilotCeilingReached(Exception):  # noqa: N818 - the name states the condit
 class PilotBudget:
     """The pilot's hard ceiling across days, on top of the ledger's daily reservations."""
 
-    def __init__(self, client, quota, ceiling):
-        self._client, self._quota, self._ceiling = client, quota, ceiling
+    def __init__(self, client, ledger, quota, ceiling):
+        self._client, self._ledger = client, ledger
+        self._quota, self._ceiling = quota, ceiling
         self.spent = 0
 
     def call(self, purpose, endpoint, params):
         cost = self._quota.cost(endpoint)
         if self.spent + cost > self._ceiling:
             raise PilotCeilingReached("The pilot ceiling is reached")
+        before = self._ledger.last_debit_id()
         try:
-            result = self._client.call(purpose, endpoint, params)
-        except QuotaExhausted:
-            raise
-        except BaseException:
-            # The ledger debited the call before it failed; the units are spent.
-            self.spent += cost
-            raise
-        self.spent += cost
-        return result
+            return self._client.call(purpose, endpoint, params)
+        finally:
+            # Only a written debit spends units, whatever happened after it.
+            if self._ledger.last_debit_id() != before:
+                self.spent += cost
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,6 +201,7 @@ class PilotRun:
     units: dict
     calls: dict
     live_videos: int
+    discovered_at: dict
     live_threads_observed: int
     polls_executed: int
     polls_beyond_window: int
@@ -213,6 +239,10 @@ def run_pilot(locked, provider, ledger, clock):
         raise ValueError("The ledger must run under the locked quota policy")
     if type(clock) is not SimulationClock:
         raise ValueError("A simulation clock is required")
+    if not isinstance(provider, SyntheticProvider) or provider.lock_digests != locked.digests:
+        raise ValueError("The synthetic provider must be built from the same pilot lock")
+    if ledger.clock is not clock or provider.clock is not clock:
+        raise ValueError("The ledger and the provider must read the run's simulation clock")
     pilot, policy = locked.pilot, locked.policy
     start = pilot.collection_start
     if clock() > start:
@@ -220,7 +250,10 @@ def run_pilot(locked, provider, ledger, clock):
     clock.advance(start)
     end = start + pilot.live_days * DAY
     history_start = start - pilot.history_days * DAY
-    budget = PilotBudget(MeteredClient(provider, ledger), locked.quota, pilot.quota_ceiling_units)
+    first_debit = ledger.last_debit_id()
+    budget = PilotBudget(
+        MeteredClient(provider, ledger), ledger, locked.quota, pilot.quota_ceiling_units
+    )
     channels = [channel for _, ids in locked.sample for channel in ids]
 
     events, counter = [], 0
@@ -237,7 +270,7 @@ def run_pilot(locked, provider, ledger, clock):
     for day in range(pilot.live_days):
         schedule(start + day * DAY + RETRIEVAL_OFFSET, RETRIEVE, None)
 
-    seen_video, seen_thread, live_videos = {}, {}, set()
+    seen_video, seen_thread, discovered = {}, {}, {}
     observed = polls = beyond = refused = failed = history_videos = history_threads = 0
     queue, stopped = None, None
     try:
@@ -258,16 +291,16 @@ def run_pilot(locked, provider, ledger, clock):
                     except QuotaExhausted:
                         refused += 1
                         continue
-                    except ProviderError:
+                    except CALL_FAILURES:
                         failed += 1
                         continue
                     if newest is not None:
                         seen_video[channel] = newest
                     # Videos from before collection start belong to retrieval.
                     for video, published in found:
-                        if video in live_videos:
+                        if video in discovered:
                             continue
-                        live_videos.add(video)
+                        discovered[video] = moment
                         for job in poll_jobs(policy, published, discovered_at=moment):
                             if job.due_at < end:
                                 schedule(job.due_at, POLL, video)
@@ -286,7 +319,7 @@ def run_pilot(locked, provider, ledger, clock):
                 except QuotaExhausted:
                     refused += 1
                     continue
-                except ProviderError:
+                except CALL_FAILURES:
                     failed += 1
                     continue
                 if newest is not None:
@@ -295,20 +328,27 @@ def run_pilot(locked, provider, ledger, clock):
                 polls += 1
             else:
                 if queue is None:
-                    queue = deque(("playlistItems.list", channel, 0) for channel in channels)
+                    queue = deque(("playlistItems.list", channel, 0, None) for channel in channels)
+                streak = 0
                 while queue:
-                    endpoint, key, page = queue[0]
+                    endpoint, key, page, as_of = queue[0]
+                    as_of = as_of or clock()
                     field = "channel" if endpoint == "playlistItems.list" else "video"
-                    params = {field: key, "page": page, "purpose": "retrieval"}
+                    params = {field: key, "page": page, "as_of": as_of, "purpose": "retrieval"}
                     try:
                         result = budget.call("retrieval", endpoint, params)
                     except QuotaExhausted:
                         break
-                    except ProviderError:
-                        # A failed retrieval page is not retried; it is counted.
-                        queue.popleft()
+                    except CALL_FAILURES:
+                        # Retried after the rest of the queue; a session in which
+                        # every queued page fails in turn ends until the next day.
                         failed += 1
+                        streak += 1
+                        queue.rotate(-1)
+                        if streak >= len(queue):
+                            break
                         continue
+                    streak = 0
                     queue.popleft()
                     more = result["next"] is not None
                     if endpoint == "playlistItems.list":
@@ -317,29 +357,31 @@ def run_pilot(locked, provider, ledger, clock):
                                 more = False
                                 break
                             if published < start:
-                                queue.append(("commentThreads.list", video, 0))
+                                queue.append(("commentThreads.list", video, 0, None))
                                 history_videos += 1
                     else:
                         history_threads += len(result["items"])
                     if more:
-                        queue.appendleft((endpoint, key, page + 1))
+                        queue.appendleft((endpoint, key, page + 1, as_of))
     except PilotCeilingReached:
         stopped = "pilot_ceiling"
 
-    units, calls = {}, {}
-    for debit in ledger.debits():
-        units[debit.purpose] = units.get(debit.purpose, 0) + debit.units
-        label = f"{debit.endpoint}:{debit.purpose}"
-        calls[label] = calls.get(label, 0) + 1
+    # Only this run's debits; a ledger may hold earlier ones under the same policy.
+    debits = ledger.debits(after=first_debit)
+    units, calls = Counter(), Counter()
+    for debit in debits:
+        units[debit.purpose] += debit.units
+        calls[f"{debit.endpoint}:{debit.purpose}"] += 1
     sampled = replace(locked.volume, channels=pilot.total_channels)
     return PilotRun(
         locked=locked,
-        seed=provider._seed,
+        seed=provider.seed,
         stopped=stopped,
         spent=budget.spent,
-        units=units,
-        calls=calls,
-        live_videos=len(live_videos),
+        units=dict(units),
+        calls=dict(calls),
+        live_videos=len(discovered),
+        discovered_at=discovered,
         live_threads_observed=observed,
         polls_executed=polls,
         polls_beyond_window=beyond,
