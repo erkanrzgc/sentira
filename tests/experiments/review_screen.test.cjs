@@ -29,3 +29,10 @@ test('timer counts only explicitly active visible session; hidden requires resta
   assert.equal(record.measurement,'browser_session_time');
   assert.equal(record.authenticated_human_review,false);
 });
+test('unpaired surrogates are refused before export', () => {
+  for (const value of ['\ud800', 'x\udc00y', 'end\udbff']) {
+    assert.throws(() => m.exportToml(payload,new Map([[field.id,{action:'correct',value,reason:'why'}]])));
+    assert.throws(() => m.exportToml(payload,new Map([[field.id,{action:'withhold',reason:value}]])));
+  }
+  assert.match(m.exportToml(payload,new Map([[field.id,{action:'correct',value:'🚀 ok',reason:'why'}]])), /value = "🚀 ok"/);
+});

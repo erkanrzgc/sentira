@@ -9,6 +9,21 @@ from pathlib import Path
 from experiments.field_review.core import build_packet, packet_digest
 
 
+def fill_slots(template: str, slots: dict[str, str]) -> str:
+    """Fill each marker exactly once; inserted text is never scanned for markers."""
+    positions = []
+    for marker, content in slots.items():
+        if template.count(marker) != 1:
+            raise ValueError(f"Template slot must appear exactly once: {marker}")
+        positions.append((template.index(marker), marker, content))
+    parts, cursor = [], 0
+    for index, marker, content in sorted(positions):
+        parts.extend((template[cursor:index], content))
+        cursor = index + len(marker)
+    parts.append(template[cursor:])
+    return "".join(parts)
+
+
 def generate(fixtures: Path, results: Path, output: Path) -> Path:
     """Validate all input bytes before creating a fresh output directory."""
     if output.exists():
@@ -31,12 +46,15 @@ def generate(fixtures: Path, results: Path, output: Path) -> Path:
     data = json.dumps(payload, ensure_ascii=True).replace("<", "\\u003c")
     assets = Path(__file__).parent
     page = (assets / "screen.html").read_text(encoding="utf-8")
-    # Replace each template slot once; payload text is never interpreted as a template.
-    parts = page.split("<!-- DATA -->")
-    prefix = parts[0].replace("/* STYLE */", (assets / "screen.css").read_text(encoding="utf-8"))
-    suffix = parts[1].replace("/* MODEL */", (assets / "model.js").read_text(encoding="utf-8"))
-    suffix = suffix.replace("/* APP */", (assets / "app.js").read_text(encoding="utf-8"))
-    rendered = prefix + data + suffix
+    rendered = fill_slots(
+        page,
+        {
+            "/* STYLE */": (assets / "screen.css").read_text(encoding="utf-8"),
+            "<!-- DATA -->": data,
+            "/* MODEL */": (assets / "model.js").read_text(encoding="utf-8"),
+            "/* APP */": (assets / "app.js").read_text(encoding="utf-8"),
+        },
+    )
     output.mkdir(parents=True)
     target = output / "index.html"
     target.write_text(rendered, encoding="utf-8")

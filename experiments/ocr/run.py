@@ -92,7 +92,9 @@ def recognise(image, engine, data, language, timeout, psm, oem):
             try:
                 result["raw_text"] = process.stdout.decode("utf-8")
             except UnicodeDecodeError:
-                result.update(status="unreadable_output", raw_text="")
+                result["raw_text"] = ""
+                if process.returncode == 0:
+                    result["status"] = "unreadable_output"
     except subprocess.TimeoutExpired as exc:
         result.update(
             status="timeout",
@@ -256,15 +258,18 @@ def render_report(report):
 
 
 def lock(directory, reviewed):
-    from experiments.ocr.scoring import verify_lock
+    from experiments.ocr.scoring import _registered_path, verify_lock
 
     directory = Path(directory)
     if not reviewed:
         raise ValueError("Visual inspection acknowledgement required")
     registration = json.loads((directory / "registration.json").read_text(encoding="utf-8"))
     verify_external(registration)
+    # Check every registered name before writing the lock, so a rejected
+    # registration never leaves a half-locked directory behind.
+    root = directory.resolve()
     for name, expected in registration["files"].items():
-        if digest(directory / name) != expected:
+        if digest(_registered_path(root, name)) != expected:
             raise ValueError("Fixture changed before locking")
     with (directory / "registration.sha256").open("x", encoding="ascii") as stream:
         stream.write(digest(directory / "registration.json") + "\n")

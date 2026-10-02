@@ -97,3 +97,33 @@ def test_running_code_must_match_registration_even_from_another_checkout():
     module = runner()
     with pytest.raises(ValueError, match="code"):
         module.verify_code({"code_files": {"run.py": "0" * 64}})
+
+
+def test_lock_rejects_escaping_file_without_writing_lock(tmp_path):
+    import json
+
+    module = runner()
+    fixtures = tmp_path / "fixtures"
+    fixtures.mkdir()
+    outside = tmp_path / "outside.png"
+    outside.write_bytes(b"synthetic outside bytes")
+    registration = {"external_files": {}, "files": {"../outside.png": module.digest(outside)}}
+    (fixtures / "registration.json").write_text(json.dumps(registration), encoding="utf-8")
+    with pytest.raises(ValueError, match="registered path"):
+        module.lock(fixtures, True)
+    assert not (fixtures / "registration.sha256").exists()
+
+
+def test_engine_error_with_invalid_utf8_keeps_engine_error(tmp_path, monkeypatch):
+    import base64
+
+    module = runner()
+    (tmp_path / "fixture.traineddata").write_bytes(b"synthetic data")
+    raw = b"partial \xff"
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a[0], 1, raw, b"bad")
+    )
+    result = module.recognise(tmp_path / "page.png", "engine", tmp_path, "fixture", 30, 6, 1)
+    assert result["status"] == "engine_error"
+    assert result["returncode"] == 1
+    assert base64.b64decode(result["raw_stdout_base64"]) == raw

@@ -167,3 +167,14 @@ def test_registered_non_png_is_refused_before_output(inputs, tmp_path):
     with pytest.raises(ValueError, match="PNG"):
         generate(*inputs, output)
     assert not output.exists()
+
+
+def test_template_slots_filled_once():
+    from experiments.review_screen.run import fill_slots
+
+    page = fill_slots("a/* X */b/* Y */c", {"/* X */": "x with /* Y */", "/* Y */": "y"})
+    assert page == "ax with /* Y */byc"
+    with pytest.raises(ValueError, match="exactly once"):
+        fill_slots("/* X *//* X */", {"/* X */": "x"})
+    with pytest.raises(ValueError, match="exactly once"):
+        fill_slots("no slot", {"/* X */": "x"})
