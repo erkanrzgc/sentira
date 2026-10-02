@@ -29,6 +29,7 @@ The quota ledger and the scenario track follow separately.
 | Measured addendum computed by registered rules | Computed by proposed synthetic rules; λ and the MDE are not computed | The rules in §A.3 are named but not specified; λ needs live polling and the MDE a walk-forward simulation |
 | Topic series from lexical assignment, raw and cleaned | One supplied raw series per topic | Topic assignment and integrity screens are later modules |
 | Replay-visible rows | Strict observation-time visibility only | Replay needs complete recorded visibility histories |
+| End rule "below the current baseline" | A zero trailing count is quiet when the baseline is zero | Operator decision; the literal rule could never end an episode on a sparse topic |
 
 Fixtures live in `examples/` and declare `mode = "synthetic"`. They are not the
 confirmatory registration v1, which is locked only after a pilot.
@@ -123,6 +124,7 @@ counts distinct test folds, ⌊(τ_k − *O*1) / fold⌋, that contain a positiv
 | Unknown or missing fields rejected | `::test_unknown_or_missing_fields_rejected` |
 | Primary and fallback cells lie in the grid | `::test_primary_and_fallback_cells_must_be_in_grid` |
 | An existing lock is never overwritten | `::test_lock_refuses_to_overwrite` |
+| A zero-baseline episode ends after a silent day | `series/test_episodes.py::test_zero_baseline_episode_ends_after_a_silent_day` |
 | A changed registration or addendum is refused | `::test_modified_registration_refused_after_lock`, `::test_modified_measured_addendum_refused_after_lock` |
 | τ_k is the first as-of tick at *k* | `series/test_episodes.py::test_tk_is_first_tick_at_which_asof_series_reaches_k` |
 | Rows invisible at *T* cannot change episodes known at *T* | `::test_onset_invariant_to_rows_invisible_at_T` |
@@ -149,13 +151,16 @@ counts distinct test folds, ⌊(τ_k − *O*1) / fold⌋, that contain a positiv
 | A lock certifies a reproducible addendum | `::test_lock_refuses_addendum_that_does_not_reproduce` |
 | A locked addendum is internally consistent | `backtest/test_registration.py::test_measured_half_life_and_horizon_must_be_consistent` |
 
-## Open question
+## Operator decisions, 2 October 2026
 
-With a zero rolling baseline the quiet end rule cannot fire, since no count is
-below zero, so episodes on sparse topics run to the maximum duration and delay the
-next onset by 2*H* plus the refractory period. This is the literal registered
-definition. Changing it, for example to "at or below" a zero baseline, is a
-methodological decision for the operator before v1 and is not made here.
+| Question | Decision |
+|---|---|
+| Measurement rules for `c_min`, `k_floor` and *H* | Provisionally approved for synthetic development. They are confirmed or revised against pilot data before the confirmatory v1 registration is locked |
+| Quiet end rule at a zero baseline | A zero baseline is returned to only by a zero trailing count: an hour with no rows in the trailing window counts as quiet. Other baselines keep the strict "below" rule |
+
+Before this decision, no count could be below a zero baseline, so episodes on
+sparse topics ran to the maximum duration and hid new surges for 2*H* plus the
+refractory period.
 
 Outside this increment: collectors, the quota ledger, topic assignment, integrity
 screens, λ, the MDE, survival, walk-forward evaluation and any accuracy figure.

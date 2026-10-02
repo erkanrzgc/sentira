@@ -58,7 +58,7 @@ def decaying(half_life_hours, starts, *, peak=80, hours=240):
     return tuple(rows)
 
 
-# Episodes on a zero background end at 2 x 168 h; 18-day spacing clears refractory.
+# Bursts 18 days apart: each episode ends and its refractory period passes first.
 BURSTS = [D0 + timedelta(days=days) for days in (30, 48, 66, 84, 102)]
 
 
