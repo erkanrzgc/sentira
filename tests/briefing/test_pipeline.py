@@ -203,6 +203,15 @@ def test_unsafe_markdown_is_escaped(config, records):
     assert "\n# Heading" not in output
 
 
+def test_apostrophe_renders_without_broken_entity(config, records):
+    row = records[0].to_mapping()
+    row["claim"] = 'Party A\'s statement and "quoted" text'
+    output = report(config, (Evidence.from_mapping(row), *records[1:]))
+    assert "&#x27;" not in output and "&\\#x27;" not in output
+    assert "Party A's statement" in output
+    assert "&quot;quoted&quot;" in output
+
+
 def test_issue_before_cutoff_rejected(config, records):
     with EvidenceLedger(":memory:", clock=lambda: T) as ledger:
         ledger.ingest(config, records)

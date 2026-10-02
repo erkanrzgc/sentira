@@ -173,6 +173,20 @@ def test_report_escapes_reviewed_text_and_withholds_value(inputs):
     assert "withheld" in report
 
 
+def test_report_renders_apostrophe_verbatim(inputs):
+    packet = build_packet(*inputs)
+    rows = apply_decisions(
+        packet,
+        decisions(
+            packet,
+            {"field_id": "page:scale", "action": "withhold", "reason": "Clerk's stamp covers it"},
+        ),
+    )
+    report = render_report(packet, rows)
+    assert "&#x27;" not in report and "&\\#x27;" not in report
+    assert "Clerk's stamp covers it" in report
+
+
 @pytest.mark.parametrize(
     "key,value", [("action", []), ("field_id", {}), ("reason", []), ("value", {}), ("extra", True)]
 )
