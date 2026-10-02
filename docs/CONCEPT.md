@@ -107,6 +107,7 @@ writing before any engagement:
 - Delivery of user identifiers to a client
 - Collection that breaches platform terms
 - Output represented as a representative measure of population opinion
+- Forecasts of market direction, or buy and sell signals for any asset
 
 These are not negotiable. Both legal exposure and the defensibility of the product
 depend on them.

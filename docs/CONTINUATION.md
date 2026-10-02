@@ -1258,3 +1258,15 @@ once to verify (milliseconds). Twenty-one mutations of the revised code each fai
 at least one test; the frame-order mutation first survived and a test was added.
 600 Python tests passed with 96% line and branch coverage; ruff check and format
 and the 14 Node tests passed.
+
+## Operator decision on markets and the economy, 2026-10-02
+
+The operator proposed adding stock markets and gold. Three readings were set out
+in plain terms and decided: discourse about the economy is adopted as a standing
+topic for the taxonomy step; market series (domestic and foreign stock indices,
+foreign exchange, gold) are deferred until after Phase 1, from official sources
+only and as context and event-log candidates; forecasting market direction or
+issuing buy and sell signals is not pursued and is now listed as out of scope in
+CONCEPT. The question whether such output would be regulated investment advice is
+added to the questions for counsel. See ROADMAP, "Operator decisions, 2 October
+2026: markets and the economy". No code changed.
