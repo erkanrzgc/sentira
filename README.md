@@ -159,8 +159,8 @@ Implemented in the offline foundation:
 sentira/
   core/         Document envelope, HMAC identity boundary, synthetic evidence,
                 procedural case records and registration helpers
-  config/       target, briefing, case, quota, collection-policy and volume
-                configuration, schema-validated
+  config/       target, briefing, case, quota, collection-policy, volume and
+                channel-frame configuration, schema-validated
   storage/      document schema, observation snapshots, strict as-of reads,
                 the synthetic evidence ledger and the quota ledger
   collectors/   metered client (every call debited before it is made), the
@@ -361,17 +361,21 @@ the buffer. See the [cost-projection design](docs/superpowers/specs/2026-10-02-c
 
 ```bash
 .venv/bin/python -m sentira.cli lock-pilot \
-  --pilot examples/synthetic-pilot.toml --policy examples/synthetic-policy.toml \
-  --quota examples/synthetic-quota.toml --volume examples/synthetic-volume.toml \
-  --locked-at 2029-12-15T00:00:00Z --output out/pilot.lock
+  --pilot examples/synthetic-pilot.toml --channels examples/synthetic-channels.toml \
+  --policy examples/synthetic-policy.toml --quota examples/synthetic-quota.toml \
+  --volume examples/synthetic-volume.toml --locked-at 2029-12-15T00:00:00Z \
+  --output out/pilot.lock
 ```
 
-The pilot registration fixes a small stratified sample with a seeded selection,
-the history and live spans, a hard quota ceiling and the only adaptations the
-pilot may make; strata name channel types, and no field can hold a counter. The
-lock is refused after collection starts or when the projected pilot cost exceeds
-the ceiling, and stops matching if the pilot, policy, quota or volume files change.
-The example values are fictional. See the [pilot-registration design](docs/superpowers/specs/2026-10-02-pilot-registration.md).
+The pilot registration fixes a small stratified sample, drawn by a registered
+seed from a frozen channel frame, the history and live spans, a hard quota
+ceiling and the only adaptations the pilot may make; strata name channel types,
+and no field can hold a counter. The lock records the drawn sample and is refused
+outside the window from registration to collection start or when the projected
+pilot cost exceeds the ceiling; it stops matching if any input file changes.
+Without `--locked-at` the system clock is used; a typed time is recorded as
+declared, because offline it is a statement rather than evidence. The example
+values are fictional. See the [pilot-registration design](docs/superpowers/specs/2026-10-02-pilot-registration.md).
 
 ## Generate a synthetic briefing
 

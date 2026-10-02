@@ -1,9 +1,31 @@
 {
+  "frame_sha256": "70b7bb93733dc93ed2c1729a88a0047fe57076cf34d03dbbde1ffabb463d7480",
   "locked_at": "2029-12-15T00:00:00+00:00",
-  "pilot_sha256": "c8d14a446d8cdc5a8f76dfad8139cfed9da0158552898b04df02d6091676b8df",
+  "locked_at_source": "declared",
+  "pilot_sha256": "082139593ff2f57b4c0fa905e2a0356cb078f25e45e359e4d5aee1f530016c0a",
   "policy_sha256": "90e69febe02a46875030fe1567fa8398912cd5d815478d5716f0055fef647f0e",
-  "projected_units": 20900,
+  "projected_units": 20904,
   "quota_sha256": "20a966563587f44637fa2f16b41d0b677946f0969e3fd5c96abf88e01d112967",
+  "sample": {
+    "broadcasters": [
+      "synthetic-broadcaster-03",
+      "synthetic-broadcaster-04",
+      "synthetic-broadcaster-05",
+      "synthetic-broadcaster-07"
+    ],
+    "institutions": [
+      "synthetic-institution-01",
+      "synthetic-institution-02",
+      "synthetic-institution-03",
+      "synthetic-institution-04"
+    ],
+    "news-outlets": [
+      "synthetic-news-outlet-01",
+      "synthetic-news-outlet-03",
+      "synthetic-news-outlet-06",
+      "synthetic-news-outlet-08"
+    ]
+  },
   "schema": 1,
   "volume_sha256": "f3b0432f45de9a4536d39f07db2caa0d649731455a56cf47de2b60125738c655"
 }

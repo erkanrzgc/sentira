@@ -1,0 +1,125 @@
+# Fictional channel frame for the synthetic pilot. Identifiers are invented and
+# resolve to nothing. One institution was added after the pilot registration and
+# can therefore never be drawn into its sample.
+mode = "synthetic"
+version = "synthetic-channels-1"
+
+[[channels]]
+id = "synthetic-broadcaster-01"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-02"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-03"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-04"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-05"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-06"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-07"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-broadcaster-08"
+channel_type = "broadcaster"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-01"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-02"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-03"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-04"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-05"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-06"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-07"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-news-outlet-08"
+channel_type = "news_outlet"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-institution-01"
+channel_type = "institution"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-institution-02"
+channel_type = "institution"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-institution-03"
+channel_type = "institution"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-institution-04"
+channel_type = "institution"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-institution-05"
+channel_type = "institution"
+added_at = 2029-12-10T00:00:00Z
+
+[[channels]]
+id = "synthetic-party-01"
+channel_type = "party"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-party-02"
+channel_type = "party"
+added_at = 2029-11-01T00:00:00Z
+
+[[channels]]
+id = "synthetic-party-03"
+channel_type = "party"
+added_at = 2029-11-01T00:00:00Z
