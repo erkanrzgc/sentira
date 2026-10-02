@@ -1,0 +1,29 @@
+# Fictional development registration for the offline surge count.
+# It is not the confirmatory registration v1, which is locked after a pilot.
+mode = "synthetic"
+version = "synthetic-surge-1"
+registered_at = 2030-01-01T00:00:00Z
+calendar_utc_offset_minutes = 0
+
+[surge]
+baseline_days = 28
+trailing_hours = 24
+refractory_hours = 72
+end_quiet_hours = 24
+max_duration_horizons = 2
+onset_multipliers = [1.5, 2.0, 3.0]
+size_multipliers = [0.5, 1.0, 2.0, 4.0]
+horizons_hours = [24, 72, 168]
+
+[surge.primary]
+onset_multiplier = 2.0
+size_multiplier = 1.0
+
+[surge.fallback]
+few_positives_size_multiplier = 0.5
+few_negatives_size_multiplier = 2.0
+
+[surge.floors]
+k_min = 100
+reporting_floor = 50
+week_floor = 20

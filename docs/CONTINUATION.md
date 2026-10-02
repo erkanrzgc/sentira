@@ -820,3 +820,28 @@ pause was not exercised in the browser, and the check is not human evaluation.
 Not changed: the name `decisions_sha256` still denotes two different digests in
 the field-review output and the eligibility context, as the eligibility README
 explains, and export errors do not yet name the affected field.
+
+## Locked synthetic surge registration, 2026-10-02
+
+First step of the [surge-counting increment](superpowers/specs/2026-10-02-surge-counting.md).
+`sentira/backtest/registration.py` validates a synthetic registration of the
+§A.3 surge definitions and a measured addendum, both TOML under `examples/`.
+`write_lock` records the SHA-256 of each file's canonical validated content with
+exclusive creation; `load_locked` recomputes both and refuses any mismatch.
+Comments and line endings do not change a digest; every definitional change does.
+The addendum values are supplied, not computed by registered rules.
+
+| Named test in `tests/backtest/test_registration.py` | Verified contract |
+| --- | --- |
+| `test_shipped_synthetic_registration_validates` | The shipped files match the shipped lock; primary cell and 36-cell grid |
+| `test_unknown_or_missing_fields_rejected` | Ten malformed registrations fail validation |
+| `test_primary_and_fallback_cells_must_be_in_grid` | Six cross-file or grid violations write no lock |
+| `test_lock_refuses_to_overwrite` | An existing lock is never replaced |
+| `test_modified_registration_refused_after_lock` | A changed definition is refused after locking |
+| `test_modified_measured_addendum_refused_after_lock` | A changed addendum is refused after locking |
+| `test_lock_ignores_comments_and_line_endings_but_not_definitions` | Converted line endings and comments keep the lock valid |
+| `test_unreadable_or_foreign_lock_refused` | Unreadable or foreign lock files are refused |
+
+Measured: 423 Python tests passed with 95% combined statement and branch coverage;
+Ruff lint and format passed. All new registration tests failed before the module
+existed. No episode is counted yet; counting is the third step.

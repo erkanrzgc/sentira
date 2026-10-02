@@ -1,0 +1,8 @@
+# Supplied synthetic values. In Phase 1 these are computed by registered rules
+# from label-free pre-origin data before counting.
+mode = "synthetic"
+version = "synthetic-measured-1"
+registration_version = "synthetic-surge-1"
+c_min = 6
+k_floor = 10
+horizon_hours = 72
