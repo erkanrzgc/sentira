@@ -163,7 +163,9 @@ sentira/
   storage/      document schema, observation snapshots, strict as-of reads and
                 the synthetic evidence ledger
   report/       scenario briefing and case report rendering
-  cli.py        briefing and case-report commands
+  series/       surge episodes on strict as-of synthetic series
+  backtest/     locked surge registration and per-cell positive counts
+  cli.py        briefing, case-report and count commands
 ```
 
 Planned, not yet implemented:
@@ -173,7 +175,7 @@ sentira/
   collectors/   per-source adapters with quota accounting for metered APIs
   nlp/          normalisation, relevance, integrity screening, sentiment,
                 target-based stance, aspect extraction
-  series/       series construction and multi-source fusion
+  series/       series construction from collected rows and multi-source fusion
   forecast/     conditional growth estimation
   backtest/     walk-forward evaluation, leakage and survivorship checks
   eval/         annotation tooling and metrics reported against baselines
@@ -278,6 +280,25 @@ cannot prove that arbitrary supplied text is synthetic. Do not ingest real conte
 retention, refresh/deletion, access controls and output suppression are not yet
 implemented. Target validation checks the declared type, not documentary evidence
 that a real entity qualifies. See [current limits](docs/CONTINUATION.md).
+
+## Count surges in a synthetic series
+
+```powershell
+./.venv/Scripts/python.exe -m sentira.cli count `
+  --registration examples/synthetic-registration.toml `
+  --measured examples/synthetic-measured.toml `
+  --lock examples/synthetic-registration.lock `
+  --series examples/synthetic-series.toml --output out/synthetic-count.md
+```
+
+The command verifies the registration lock before reading the series and refuses
+any changed definition. It counts episodes, eligible, positive, negative, censored
+and detected-at-crossing episodes for every registered grid cell, applies the
+registered primary-and-fallback rule and stamps both registration digests into the
+report. The fictional example is far below *K*min and is reported as not
+backtestable. The measured addendum is supplied rather than computed, topic
+assignment and integrity screens are not implemented, and visibility is strict
+observation time only. See the [surge-counting design](docs/superpowers/specs/2026-10-02-surge-counting.md).
 
 ## Generate a synthetic briefing
 

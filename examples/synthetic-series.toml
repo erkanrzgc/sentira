@@ -1,0 +1,26 @@
+# Fictional hourly topic series for the offline surge count. Each segment adds
+# per_hour rows at half past every hour; delay_hours sets when rows become visible.
+mode = "synthetic"
+start = 2030-01-01T00:00:00Z
+end = 2030-03-12T00:00:00Z
+
+[[topics]]
+id = "transport"
+segments = [
+  { first = 2030-01-01T00:00:00Z, hours = 1680, per_hour = 1 },
+  { first = 2030-02-02T08:00:00Z, hours = 18, per_hour = 4 },
+  { first = 2030-02-20T06:00:00Z, hours = 10, per_hour = 3, delay_hours = 6 },
+]
+
+[[topics]]
+id = "housing"
+segments = [
+  { first = 2030-01-01T00:00:00Z, hours = 1680, per_hour = 2 },
+  { first = 2030-02-10T00:00:00Z, hours = 30, per_hour = 6 },
+]
+
+[[topics]]
+id = "water"
+segments = [
+  { first = 2030-02-25T10:00:00Z, hours = 6, per_hour = 3 },
+]

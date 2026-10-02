@@ -870,7 +870,7 @@ current-baseline end rule, the refractory period and the maximum duration.
 | `test_detection_requires_locked_registration_grid_cell_and_hour_bounds` | Unlocked input, off-grid cells and unaligned bounds are refused |
 
 Expected ticks are hand-computed from zero or piecewise-constant synthetic
-backgrounds. Measured: seven deliberate code mutations were tried (ignoring
+backgrounds. Measured: six deliberate code mutations were tried (ignoring
 visibility, a frozen end baseline, no refractory period, censoring by crossing,
 no `c_min`, no maximum duration); every one now fails at least one test, after
 the refractory test was added for the one that initially survived. 433 Python
@@ -879,3 +879,36 @@ tests passed with 95% combined coverage; Ruff passed.
 With a zero baseline the quiet end rule cannot fire, because no count is below
 zero; such episodes end at the maximum duration. This follows the registered
 definition and is recorded here rather than changed.
+
+## Per-cell surge counts and the count command, 2026-10-02
+
+Third step of the surge-counting increment. `sentira/series/synthetic.py` expands
+compact synthetic segments into rows; `sentira/backtest/positives.py` counts every
+registered grid cell, applies the registered primary-and-fallback rule with
+*K*min and the week floor, and renders a synthetic report stamped with both
+registration digests and the series digest. The `count` command verifies the lock
+before it reads the series.
+
+| Named test | Verified contract |
+| --- | --- |
+| `tests/backtest/test_positives.py::test_counts_match_hand_labelled_fixture` | Four hand-labelled episodes: one each positive, negative, censored and detected at crossing |
+| `::test_fallback_cell_chosen_by_registered_rule` | Primary, both fallbacks, both-short and fallback-short outcomes; no other cell is promoted |
+| `::test_week_floor_enforced` | 19 weeks with a positive fail and 20 pass |
+| `::test_count_refuses_on_registration_hash_mismatch` | A changed registration or addendum writes no report and echoes no input |
+| `tests/backtest/test_cli.py::test_count_cli_renders_stamped_report` | The report carries both digests, one row per grid cell and no probability |
+| `::test_count_cli_is_deterministic` | Identical inputs produce identical bytes |
+| `::test_count_cli_protects_existing_output_and_inputs` | No overwrite without `--overwrite`; inputs and non-Markdown targets refused |
+| `::test_count_cli_rejects_invalid_series` | Four malformed series fail without output |
+| `tests/series/test_episodes.py::test_baseline_includes_late_rows_for_past_days` | A late row for a past day updates the baseline at the tick it becomes visible |
+
+The new count tests failed at collection before `positives.py` existed. The
+baseline is now cached until the local day changes or a late row for a past day
+arrives; this cut one example run from 3.1 to 0.7 seconds (measured, single run)
+with byte-identical output, and the late-row test was added after a deliberately
+stale cache initially passed every test.
+
+The fictional example reports "not backtestable on current history": at the
+primary cell it has 2 positives and 1 negative against a *K*min of 100 per class.
+This is a property of a small fixture, not a feasibility finding. Measured: 445
+Python tests and 14 Node tests passed, 95% combined statement and branch coverage,
+Ruff lint and format passed for 100 files.

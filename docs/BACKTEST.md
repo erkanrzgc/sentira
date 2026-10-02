@@ -49,6 +49,12 @@ required deletion, identify affected results as no longer reproducible. The
 offline database is disposable synthetic storage and implements no production
 lifecycle. Production ingestion remains disabled until that design is resolved.
 
+A synthetic, offline subset of Phase 1 now exists: a locked surge registration,
+episode detection on strict as-of series and per-cell counts. Its deviations
+from the file list below (TOML, content digests, a fixed calendar offset and a
+supplied measured addendum) are recorded in the
+[surge-counting design](superpowers/specs/2026-10-02-surge-counting.md).
+
 ## 0. The point-in-time rule, reconciled with historical retrieval
 
 ### 0.1 The conflict
