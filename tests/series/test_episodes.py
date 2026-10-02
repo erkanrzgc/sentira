@@ -188,8 +188,22 @@ def test_open_episode_below_k_is_unresolved(locked):
     (episode,) = detect(locked, rows(DAY, 3, 2), end=DAY + 5 * HOUR)
     assert episode.tau_k is None and episode.end_reason == "open"
     assert episode.label == "open"
+    # The last rows are at 02:30; the trailing count is zero from DAY + 27 h and
+    # the episode ends after 24 silent hours, at DAY + 50 h.
     (ended,) = detect(locked, rows(DAY, 3, 2), end=DAY + timedelta(days=10))
-    assert ended.label == "below_k" and ended.end_reason == "max_duration"
+    assert ended.label == "below_k" and ended.end_reason == "quiet"
+    assert ended.ended_at == DAY + 50 * HOUR
+
+
+def test_zero_baseline_episode_ends_after_a_silent_day(locked):
+    # Operator decision, 2 October 2026: a zero baseline is returned to only by a
+    # zero trailing count. The last rows are at 11:30, the trailing count is zero
+    # from DAY + 36 h, and the 24th silent hour is DAY + 59 h.
+    (episode,) = detect(locked, rows(DAY, 12, 2), end=DAY + timedelta(days=10))
+    assert episode.baseline == 0
+    assert episode.end_reason == "quiet"
+    assert episode.ended_at == DAY + 59 * HOUR
+    assert episode.label == "negative"
 
 
 def test_trailing_window_scales_daily_baseline(locked, tmp_path):

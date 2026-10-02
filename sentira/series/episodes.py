@@ -187,8 +187,10 @@ class _CellTracker:
             and size >= 2 * state.k
         ):
             state.crossed_2k_at = tick
-        # The end rule uses the current rolling baseline, not the frozen one.
-        state.quiet_hours = state.quiet_hours + 1 if count < expected else 0
+        # The end rule uses the current rolling baseline, not the frozen one. A zero
+        # baseline is returned to only by a zero count (operator decision, 2026-10-02).
+        quiet = count < expected or (expected == 0 and count == 0)
+        state.quiet_hours = state.quiet_hours + 1 if quiet else 0
         if state.quiet_hours >= self.rules.end_quiet_hours:
             self._close(tick, "quiet")
         elif tick - state.onset_at >= self.max_duration:

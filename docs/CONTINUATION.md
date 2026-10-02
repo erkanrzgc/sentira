@@ -1032,3 +1032,21 @@ second for the example. Measured: the new tests failed before their fixes; five
 deliberate mutations (half-life from onset, a lock without recomputation, no
 half-life consistency, no horizon consistency, an unconverted overflow) each fail
 at least one test. 473 Python tests passed.
+
+## Operator decisions on measurement rules and sparse topics, 2026-10-02
+
+The operator was asked, in plain terms, about the two open methodological points.
+Decisions:
+
+| Question | Decision |
+| --- | --- |
+| Measurement rules for `c_min`, `k_floor` and *H* | Provisionally approved for synthetic development; to be confirmed or revised against pilot data before v1 is locked |
+| Quiet end rule at a zero baseline | Changed: with a zero baseline, a zero trailing count is quiet. Other baselines keep the strict rule |
+
+Named test: `tests/series/test_episodes.py::test_zero_baseline_episode_ends_after_a_silent_day`.
+An episode whose last rows are at 11:30 now ends quietly 59 hours after the start
+of that day instead of at the maximum duration; the closing of a below-*k* episode
+in `test_open_episode_below_k_is_unresolved` moved from the maximum duration to a
+quiet end at 50 hours accordingly. Both expectations failed before the change. No
+other label or count changed, and the shipped measured addendum still reproduces
+byte for byte. Measured: 474 Python tests passed.
