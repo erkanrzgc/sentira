@@ -37,7 +37,8 @@ python -m sentira.cli case-report --input examples/synthetic-cases.toml --cutoff
 
 Existing output requires `--overwrite`. Cases, institutions, source references,
 events and reporting labels live in TOML. Only explicitly synthetic input and
-reserved source URLs are accepted; this is not a semantic personal-data filter.
+reserved source URLs are accepted, and each event link must share the host of
+its registered source; this is not a semantic personal-data filter.
 Observation timestamps are supplied per snapshot, not durably captured by a
 collector. There is no automated document reading, network access or model call.
 
@@ -152,20 +153,34 @@ against a primary source). Estimates are not presented as measurements.
 
 ## Architecture
 
+Implemented in the offline foundation:
+
 ```
 sentira/
-  core/         Document and Source protocols; HMAC identity boundary
-  config/       channel, feed, target and topic definitions, schema-validated
+  core/         Document envelope, HMAC identity boundary, synthetic evidence,
+                procedural case records and registration helpers
+  config/       target, briefing and case configuration, schema-validated
+  storage/      document schema, observation snapshots, strict as-of reads and
+                the synthetic evidence ledger
+  report/       scenario briefing and case report rendering
+  cli.py        briefing and case-report commands
+```
+
+Planned, not yet implemented:
+
+```
+sentira/
   collectors/   per-source adapters with quota accounting for metered APIs
-  storage/      schema and observation snapshots
   nlp/          normalisation, relevance, integrity screening, sentiment,
                 target-based stance, aspect extraction
   series/       series construction and multi-source fusion
   forecast/     conditional growth estimation
   backtest/     walk-forward evaluation, leakage and survivorship checks
-  report/       periodic reporting
   eval/         annotation tooling and metrics reported against baselines
 ```
+
+The local experiments under `experiments/` sit outside the package and are not
+connected to it.
 
 Accuracy figures are reported alongside a majority-class and a random baseline. A
 figure without its baseline is not reported, on the grounds that a three-class
