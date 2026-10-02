@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "sentira"
 version = "0.1.0.dev0"
 description = "Offline contracts for aggregate discourse measurement"
 requires-python = ">=3.12,<3.13"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
 dependencies = []
 
 [tool.setuptools.packages.find]

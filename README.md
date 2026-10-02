@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
 [![Models](https://img.shields.io/badge/inference-local--only-success)](#design-principles)
 [![Privacy](https://img.shields.io/badge/design-aggregate--only-informational)](#design-principles)
-[![License](https://img.shields.io/badge/license-proprietary-lightgrey)](#license)
+[![Licence](https://img.shields.io/badge/licence-AGPL--3.0--only-blue)](#licence)
 
 Sentira is designed to observe public commentary and news metadata and convert them into time
 series: which subjects gain attention, when they gain it, and in what tone
@@ -423,7 +423,11 @@ cross-border transfer; it does not establish a lawful basis for processing. That
 question is recorded as an open item requiring qualified legal advice. No claim of
 compliance is made here.
 
-## License
+## Licence
 
-Proprietary. All rights reserved. No licence is granted for use, reproduction or
-distribution.
+Sentira is licensed under the GNU Affero General Public License, version 3 only
+(AGPL-3.0-only); see [LICENSE](LICENSE). Anyone who modifies Sentira and lets users
+interact with it over a network must offer those users the corresponding source
+code under the same licence. The licence covers the code and documentation in this
+repository. It grants no rights to third-party data, platform content or
+trademarks. Licences on other terms may be available from the copyright holder.
