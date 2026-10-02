@@ -142,7 +142,8 @@ def apply_decisions(packet: dict, decisions: dict) -> list[dict]:
 
 
 def _escape(value: str) -> str:
-    escaped = html.escape(value, quote=True)
+    # Apostrophes stay literal; "&#x27;" would be broken by the "#" escape below.
+    escaped = html.escape(value, quote=False).replace('"', "&quot;")
     escaped = re.sub(r"([\\`*_{}\[\]()#+.!|>~-])", r"\\\1", escaped)
     return " ".join(escaped.splitlines())
 

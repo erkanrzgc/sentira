@@ -9,7 +9,9 @@ from sentira.core.document import utc
 
 
 def safe(value):
-    value = html.escape(" ".join(str(value).split()), quote=True)
+    # Apostrophes stay literal: html.escape would emit "&#x27;", whose "#" the
+    # Markdown escape below would then break into visible entity text.
+    value = html.escape(" ".join(str(value).split()), quote=False).replace('"', "&quot;")
     return re.sub(r"([\\`*_{}\[\]()#+.!|>~-])", r"\\\1", value)
 
 

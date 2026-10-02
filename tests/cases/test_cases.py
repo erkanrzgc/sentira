@@ -209,6 +209,14 @@ def test_case_report_escapes_source_text():
     assert "#page=2" in output
 
 
+def test_case_report_renders_apostrophe_verbatim():
+    values = data()
+    values["events"][0]["summary"] = "The authority's notice"
+    output = report(values)
+    assert "&#x27;" not in output and "&\\#x27;" not in output
+    assert "The authority's notice" in output
+
+
 def test_case_report_is_deterministic():
     values = data()
     values["events"].append(event(id="event-b", case_id="case-b"))
