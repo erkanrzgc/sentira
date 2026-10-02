@@ -1,12 +1,18 @@
 # Fictional volume assumptions for the quota cost projection. Every value is an
-# assumption, not a measurement; the first live run replaces them. The cumulative
-# shares give the fraction of a video's threads published by each poll age of the
-# collection policy, in the same order. The playlist page size is a registered
-# input taken from the provider's documentation.
+# assumption, not a measurement; the first live run replaces them. Threads per
+# video are strata so that a heavy tail can be costed as such; this example has a
+# single stratum. The cumulative shares give the fraction of a video's threads
+# published by each poll age of the collection policy, in the same order. The
+# playlist page size is taken from the provider's documentation; the playlist
+# item ceiling is reported by users and not verified.
 mode = "synthetic"
-version = "synthetic-volume-1"
+version = "synthetic-volume-2"
 channels = 60
 videos_per_channel_day = 10
-threads_per_video = 300
 cumulative_share_by_age = [0.30, 0.60, 0.85, 0.95, 0.98, 1.00]
 playlist_page_size = 50
+playlist_item_ceiling = 20000
+
+[[thread_strata]]
+share_of_videos = 1.0
+threads_per_video = 300
