@@ -1,0 +1,12 @@
+# Fictional volume assumptions for the quota cost projection. Every value is an
+# assumption, not a measurement; the first live run replaces them. The cumulative
+# shares give the fraction of a video's threads published by each poll age of the
+# collection policy, in the same order. The playlist page size is a registered
+# input taken from the provider's documentation.
+mode = "synthetic"
+version = "synthetic-volume-1"
+channels = 60
+videos_per_channel_day = 10
+threads_per_video = 300
+cumulative_share_by_age = [0.30, 0.60, 0.85, 0.95, 0.98, 1.00]
+playlist_page_size = 50

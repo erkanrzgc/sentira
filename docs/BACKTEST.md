@@ -61,6 +61,9 @@ transports only; the ledger sits in `storage/quota.py` rather than
 The polling schedule and replay times of policy *P* exist as pure functions over
 synthetic inputs; see the
 [collection-policy design](superpowers/specs/2026-10-02-collection-policy.md).
+The quota arithmetic of §B is reproduced in code by a cost projection over the
+same schedule; its volume inputs remain the unmeasured assumptions of §D. See the
+[cost-projection design](superpowers/specs/2026-10-02-cost-projection.md).
 
 ## 0. The point-in-time rule, reconciled with historical retrieval
 
